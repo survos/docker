@@ -1,6 +1,6 @@
 services:
     postgres:
-        image: postgres:18-alpine
+        image: timescale/timescaledb-ha:pg18-all
         container_name: survos_postgres
         environment:
             POSTGRES_USER: postgres
@@ -8,9 +8,9 @@ services:
         ports:
             - "5434:5432"
         volumes:
-            - ${DOCKER_DATA_ROOT:?Set DOCKER_DATA_ROOT}/postgres:/var/lib/postgresql
+            - ${DOCKER_DATA_ROOT:?Set DOCKER_DATA_ROOT}/postgres:/home/postgres/pgdata
         healthcheck:
-            test: ["CMD-SHELL", "pg_isready -U survos"]
+            test: ["CMD-SHELL", "pg_isready -U postgres"]
             interval: 5s
             timeout: 3s
             retries: 10
