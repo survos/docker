@@ -33,7 +33,7 @@ services:
             retries: 10
 
     meilisearch:
-        image: getmeili/meilisearch:v1.43
+        image: getmeili/meilisearch:v1.44.0
         container_name: survos_meilisearch
         environment:
             MEILI_NO_ANALYTICS: "true"
