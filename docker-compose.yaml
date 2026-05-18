@@ -8,7 +8,7 @@ services:
         ports:
             - "5434:5432"
         volumes:
-            - ${DOCKER_DATA_ROOT:?Set DOCKER_DATA_ROOT}/postgres:/home/postgres/pgdata
+            - postgres_data:/home/postgres/pgdata
         healthcheck:
             test: ["CMD-SHELL", "pg_isready -U postgres"]
             interval: 5s
@@ -90,6 +90,9 @@ services:
         environment:
             MP_SMTP_AUTH_ACCEPT_ANY: 1
             MP_SMTP_AUTH_ALLOW_INSECURE: 1
+
+volumes:
+    postgres_data:
 
 networks:
     meili_network:
