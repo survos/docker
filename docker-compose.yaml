@@ -3,8 +3,8 @@ services:
         image: postgres:18-alpine
         container_name: survos_postgres
         environment:
-            POSTGRES_USER: survos
-            POSTGRES_PASSWORD: survos
+            POSTGRES_USER: postgres
+            POSTGRES_PASSWORD: docker
         ports:
             - "5434:5432"
         volumes:

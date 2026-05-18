@@ -18,7 +18,7 @@ docker compose up -d
 
 | Service | Port | Credentials |
 |---------|------|-------------|
-| Postgres | 5434 | `survos` / `survos` |
+| Postgres | 5434 | `postgres` / `docker` |
 | Postgres (messenger) | 5435 | `messenger` / `messenger` |
 | Meilisearch | 7700 | key: `Y0urVery-S3cureAp1K3y` |
 | Redis | 6379 | — |
@@ -36,7 +36,7 @@ bin/console doctrine:database:create
 
 Each app's `.env`:
 ```
-DATABASE_URL=postgresql://survos:survos@127.0.0.1:5434/<appname>?serverVersion=18&charset=utf8
+DATABASE_URL=postgresql://postgres:docker@127.0.0.1:5434/<appname>?serverVersion=18&charset=utf8
 MESSENGER_TRANSPORT_DSN=doctrine://messenger:messenger@127.0.0.1:5435/messenger?serverVersion=18&charset=utf8
 MEILI_DSN=http://127.0.0.1:7700
 MEILI_API_KEY=Y0urVery-S3cureAp1K3y
