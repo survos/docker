@@ -1,0 +1,96 @@
+services:
+    postgres:
+        image: postgres:18-alpine
+        container_name: survos_postgres
+        environment:
+            POSTGRES_USER: survos
+            POSTGRES_PASSWORD: survos
+        ports:
+            - "5434:5432"
+        volumes:
+            - ${DOCKER_DATA_ROOT:?Set DOCKER_DATA_ROOT}/postgres:/var/lib/postgresql
+        healthcheck:
+            test: ["CMD-SHELL", "pg_isready -U survos"]
+            interval: 5s
+            timeout: 3s
+            retries: 10
+
+    postgres_messenger:
+        image: postgres:18-alpine
+        container_name: survos_messenger
+        environment:
+            POSTGRES_USER: messenger
+            POSTGRES_PASSWORD: messenger
+            POSTGRES_DB: messenger
+        ports:
+            - "5435:5432"
+        volumes:
+            - ${DOCKER_DATA_ROOT:?Set DOCKER_DATA_ROOT}/messenger:/var/lib/postgresql
+        healthcheck:
+            test: ["CMD-SHELL", "pg_isready -U messenger"]
+            interval: 5s
+            timeout: 3s
+            retries: 10
+
+    meilisearch:
+        image: getmeili/meilisearch:v1.43
+        container_name: survos_meilisearch
+        environment:
+            MEILI_NO_ANALYTICS: "true"
+            MEILI_HTTP_ALLOWED_ORIGINS: '["*"]'
+            MEILI_MASTER_KEY: ${MEILI_API_KEY:-Y0urVery-S3cureAp1K3y}
+            MEILI_ENV: development
+            MEILI_EXPERIMENTAL_CONTAINS_FILTER: "true"
+            MEILI_EXPERIMENTAL_DUMPLESS_UPGRADE: "true"
+        ports:
+            - "7700:7700"
+        volumes:
+            - ${DOCKER_DATA_ROOT:?Set DOCKER_DATA_ROOT}/meili:/meili_data/
+        networks:
+            - meili_network
+
+    redis:
+        image: redis:latest
+        container_name: survos_redis
+        command: ["redis-server", "--save", "60", "100"]
+        ports:
+            - "6379:6379"
+        volumes:
+            - ${DOCKER_DATA_ROOT:?Set DOCKER_DATA_ROOT}/redis_conf:/usr/local/etc/redis
+            - ${DOCKER_DATA_ROOT:?Set DOCKER_DATA_ROOT}/redis_data:/data
+
+    mercure:
+        image: dunglas/mercure
+        container_name: survos_mercure
+        restart: unless-stopped
+        ports:
+            - "3000:80"
+        environment:
+            SERVER_NAME: ':80'
+            MERCURE_PUBLISHER_JWT_KEY: 'c4e7f8a2c3f1e6b0d9c2b4a7e8f1c0d9a6b3f2e4c8d7a1b0e9f6a5c4d3b2a1'
+            MERCURE_SUBSCRIBER_JWT_KEY: 'c4e7f8a2c3f1e6b0d9c2b4a7e8f1c0d9a6b3f2e4c8d7a1b0e9f6a5c4d3b2a1'
+            MERCURE_EXTRA_DIRECTIVES: |
+                cors_origins *
+                anonymous
+        healthcheck:
+            test: ["CMD", "curl", "-f", "https://localhost/healthz"]
+            timeout: 5s
+            retries: 5
+            start_period: 60s
+        volumes:
+            - ${DOCKER_DATA_ROOT:?Set DOCKER_DATA_ROOT}/mercure_data:/data/caddy
+            - ${DOCKER_DATA_ROOT:?Set DOCKER_DATA_ROOT}/mercure_config:/config
+
+    mailer:
+        image: axllent/mailpit
+        container_name: survos_mailer
+        ports:
+            - "1025:1025"
+            - "8025:8025"
+        environment:
+            MP_SMTP_AUTH_ACCEPT_ANY: 1
+            MP_SMTP_AUTH_ALLOW_INSECURE: 1
+
+networks:
+    meili_network:
+        driver: bridge
