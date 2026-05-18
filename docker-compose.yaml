@@ -38,7 +38,7 @@ services:
         environment:
             MEILI_NO_ANALYTICS: "true"
             MEILI_HTTP_ALLOWED_ORIGINS: '["*"]'
-            MEILI_MASTER_KEY: ${MEILI_API_KEY:-Y0urVery-S3cureAp1K3y}
+            MEILI_MASTER_KEY: ${MEILI_API_KEY:?Set MEILI_API_KEY in your environment}
             MEILI_ENV: development
             MEILI_EXPERIMENTAL_CONTAINS_FILTER: "true"
             MEILI_EXPERIMENTAL_DUMPLESS_UPGRADE: "true"

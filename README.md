@@ -5,9 +5,10 @@ Shared infrastructure for Survos/Museado development. One clone, all services.
 ## Setup
 
 ```bash
-# Set your data root (add to ~/.bashrc)
+# Set required env vars (add to ~/.bashrc)
 export DOCKER_DATA_ROOT=/mnt/data/docker-volumes   # Linux
 export DOCKER_DATA_ROOT="$HOME/docker-volumes"     # macOS
+export MEILI_API_KEY=<your-secret-key>
 mkdir -p "$DOCKER_DATA_ROOT"
 
 git clone git@github.com:survos/docker && cd docker
@@ -20,7 +21,7 @@ docker compose up -d
 |---------|------|-------------|
 | Postgres | 5434 | `postgres` / `docker` |
 | Postgres (messenger) | 5435 | `messenger` / `messenger` |
-| Meilisearch | 7700 | key: `Y0urVery-S3cureAp1K3y` |
+| Meilisearch | 7700 | key: `$MEILI_API_KEY` (required, set in environment) |
 | Redis | 6379 | — |
 | Mercure | 3000 | — |
 | Mailpit (SMTP) | 1025 / 8025 | — |
