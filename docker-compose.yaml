@@ -49,6 +49,15 @@ services:
         networks:
             - meili_network
 
+    # imgproxy:
+    #     image: docker.imgproxy.pro/imgproxy:v4.0.11-ml
+    #     container_name: imgproxy
+    #     environment:
+    ##         in dev, leave unset, 100 req/minute         
+    #         IMGPROXY_LICENSE_KEY: ${IMGPROXY_LICENSE_KEY:?Set IMGPROXY_LICENSE_KEY in your environment}
+    #     ports:
+    #         - "8080:8080"
+
     redis:
         image: redis:latest
         container_name: survos_redis
@@ -90,6 +99,25 @@ services:
         environment:
             MP_SMTP_AUTH_ACCEPT_ANY: 1
             MP_SMTP_AUTH_ALLOW_INSECURE: 1
+
+    rabbitmq:
+        image: rabbitmq:4-management
+        container_name: survos_rabbitmq
+        environment:
+            RABBITMQ_DEFAULT_USER: guest
+            RABBITMQ_DEFAULT_PASS: guest
+            RABBITMQ_DEFAULT_VHOST: packages
+        ports:
+            - "5672:5672"
+            - "15672:15672"
+        volumes:
+            - ${DOCKER_DATA_ROOT:?Set DOCKER_DATA_ROOT}/rabbitmq:/var/lib/rabbitmq
+            - ./rabbitmq/conf.d:/etc/rabbitmq/conf.d:ro
+        healthcheck:
+            test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+            interval: 10s
+            timeout: 5s
+            retries: 10
 
 volumes:
     postgres_data:
