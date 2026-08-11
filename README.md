@@ -8,7 +8,6 @@ Shared infrastructure for Survos/Museado development. One clone, all services.
 # Set required env vars (add to ~/.bashrc)
 export DOCKER_DATA_ROOT=/mnt/data/docker-volumes   # Linux
 export DOCKER_DATA_ROOT="$HOME/docker-volumes"     # macOS
-export MEILI_API_KEY=<your-secret-key>
 export IMGPROXY_LICENSE_KEY=<your-imgproxy-license-key>
 mkdir -p "$DOCKER_DATA_ROOT"
 
@@ -24,13 +23,21 @@ Alternatively, put the secret values in a local `.env` file in this repo. Compos
 |---------|------|-------------|
 | Postgres | 5434 | `postgres` / `docker` |
 | Postgres (messenger) | 5435 | `messenger` / `messenger` |
-| Meilisearch | 7700 | key: `$MEILI_API_KEY` (required, set in environment) |
 | imgproxy | 8080 | license: `$IMGPROXY_LICENSE_KEY` (required, set in environment) |
 | Redis | 6379 | — |
 | Mercure | 3000 | — |
 | Mailpit (SMTP) | 1025 / 8025 | — |
 | RabbitMQ (AMQP) | 5672 | `guest` / `guest` |
 | RabbitMQ (management UI) | 15672 | `guest` / `guest`, http://localhost:15672 |
+
+## Meilisearch
+
+Meilisearch now lives in its own public repository so local development builds
+the exact Dockerfile deployed to production. Start it separately:
+
+```bash
+cd ~/sites/meilisearch && bin/run.sh
+```
 
 ## Per-app databases
 
@@ -67,7 +74,7 @@ docker compose exec rabbitmq rabbitmqctl set_permissions -p <appname> guest ".*"
 
 ## Data persistence
 
-Postgres, Meilisearch, Redis, Mercure, and RabbitMQ all mount their data directory under
+Postgres, Redis, Mercure, and RabbitMQ all mount their data directory under
 `$DOCKER_DATA_ROOT`, so `docker compose down` / host reboots don't lose queues, vhosts,
 indexes, or rows. Only `docker compose down -v` (which removes volumes) or manually
 clearing `$DOCKER_DATA_ROOT` wipes them.
