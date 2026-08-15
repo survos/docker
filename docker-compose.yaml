@@ -2,6 +2,7 @@ services:
     postgres:
         image: timescale/timescaledb-ha:pg18-all
         container_name: survos_postgres
+        restart: unless-stopped
         environment:
             POSTGRES_USER: postgres
             POSTGRES_PASSWORD: docker
@@ -18,6 +19,7 @@ services:
     postgres_messenger:
         image: postgres:18-alpine
         container_name: survos_messenger
+        restart: unless-stopped
         environment:
             POSTGRES_USER: messenger
             POSTGRES_PASSWORD: messenger
@@ -44,6 +46,7 @@ services:
     redis:
         image: redis:latest
         container_name: survos_redis
+        restart: unless-stopped
         command: ["redis-server", "--save", "60", "100"]
         ports:
             - "6379:6379"
@@ -65,7 +68,12 @@ services:
                 cors_origins *
                 anonymous
         healthcheck:
-            test: ["CMD", "curl", "-f", "https://localhost/healthz"]
+            # SERVER_NAME is ':80' above (plain HTTP, no cert) -- this
+            # tested https://localhost/healthz on :443, which is never
+            # listening, so it always failed regardless of the service's
+            # actual health. Confirmed live: Mercure was serving real
+            # subscribers/publishes the whole time this said "unhealthy".
+            test: ["CMD", "curl", "-f", "http://localhost/healthz"]
             timeout: 5s
             retries: 5
             start_period: 60s
@@ -76,6 +84,7 @@ services:
     mailer:
         image: axllent/mailpit
         container_name: survos_mailer
+        restart: unless-stopped
         ports:
             - "1025:1025"
             - "8025:8025"
@@ -86,6 +95,7 @@ services:
     rabbitmq:
         image: rabbitmq:4-management
         container_name: survos_rabbitmq
+        restart: unless-stopped
         environment:
             RABBITMQ_DEFAULT_USER: guest
             RABBITMQ_DEFAULT_PASS: guest

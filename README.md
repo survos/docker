@@ -17,6 +17,18 @@ docker compose up -d
 
 Alternatively, put the secret values in a local `.env` file in this repo. Compose reads it automatically, and `.env` is ignored by git.
 
+### After a reboot
+
+Every service here has `restart: unless-stopped`, so a running Docker daemon
+brings them all back on its own — but on machines with the (optional)
+`apparmor-profiles` package installed, php-fpm gets blocked by a reset
+AppArmor profile on every boot regardless of this stack. Run this once per
+boot to cover both:
+
+```bash
+bin/start.sh
+```
+
 ## Services
 
 | Service | Port | Credentials |
