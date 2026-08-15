@@ -1,4 +1,37 @@
 services:
+    # Shared Elasticsearch development node used by SearchBundle-backed apps.
+    # Application-specific indexes and mappings remain owned by SearchBundle.
+    elasticsearch:
+        image: docker.elastic.co/elasticsearch/elasticsearch:9.5.0
+        container_name: survos_elasticsearch
+        restart: unless-stopped
+        environment:
+            discovery.type: single-node
+            xpack.security.enabled: "false"
+            ES_JAVA_OPTS: "-Xms1g -Xmx1g"
+        ports:
+            - "127.0.0.1:9200:9200"
+        volumes:
+            - elasticsearch_data:/usr/share/elasticsearch/data
+        healthcheck:
+            test: ["CMD-SHELL", "curl --fail --silent http://localhost:9200/_cluster/health || exit 1"]
+            interval: 10s
+            timeout: 5s
+            retries: 20
+            start_period: 60s
+
+    kibana:
+        image: docker.elastic.co/kibana/kibana:9.5.0
+        container_name: survos_kibana
+        restart: unless-stopped
+        depends_on:
+            elasticsearch:
+                condition: service_healthy
+        environment:
+            ELASTICSEARCH_HOSTS: http://elasticsearch:9200
+        ports:
+            - "127.0.0.1:5601:5601"
+
     postgres:
         image: timescale/timescaledb-ha:pg18-all
         container_name: survos_postgres
@@ -113,4 +146,5 @@ services:
             retries: 10
 
 volumes:
+    elasticsearch_data:
     postgres_data:
