@@ -9,6 +9,10 @@ services:
             discovery.type: single-node
             xpack.security.enabled: "false"
             ES_JAVA_OPTS: "-Xms1g -Xmx1g"
+            # No http.cors.* here on purpose. The Elasticvue *browser extension* and desktop app
+            # talk to this node without needing CORS; only the hosted/self-hosted web page does.
+            # This node is unauthenticated, so don't widen its origin policy for a UI nobody here
+            # is running that way.
         ports:
             - "127.0.0.1:9200:9200"
         volumes:
@@ -19,6 +23,13 @@ services:
             timeout: 5s
             retries: 20
             start_period: 60s
+
+    # No elasticvue service here on purpose either. Elasticvue is the Elasticsearch counterpart to
+    # the riccox Meilisearch UI (index/alias management, document browser, REST console, MIT), but
+    # we use its browser extension, which needs neither a container nor CORS:
+    #   https://chromewebstore.google.com/detail/elasticvue/hkedbapjpblbodpgbajblpnlpenaebaa
+    # If someone ever wants the web build instead -- `docker run -p 8081:8080 cars10/elasticvue` --
+    # it needs the http.cors.* settings above turned back on and scoped to its origin.
 
     kibana:
         image: docker.elastic.co/kibana/kibana:9.5.0
