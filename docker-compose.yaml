@@ -44,7 +44,12 @@ services:
             - "127.0.0.1:5601:5601"
 
     postgres:
-        image: timescale/timescaledb-ha:pg18-all
+        # Pinned deliberately -- `pg18-all` is a FLOATING tag. On 2026-08-16 the
+        # local image had timescaledb 2.27.1 while that tag had moved to 2.29.1,
+        # so dev drifted from a fresh pull with no signal. Upgrades should be a
+        # committed change to this line, matching ~/sites/postgres/Dockerfile
+        # (which production deploys from). See survos/docker#5.
+        image: timescale/timescaledb-ha:pg18.4-ts2.29.1-all
         container_name: survos_postgres
         restart: unless-stopped
         environment:
