@@ -56,11 +56,14 @@ old env and never got swapped. `ps:stop` + `ps:start` fixes it. `pg-cutover.sh` 
 container and falls back automatically; `chad` and `packages` hit the same path during the bulk run.
 Symptom to recognise: "the new credential doesn't work" when it demonstrably does.
 
-**Vaulted `DATABASE_URL`s are overridden by `dokku config:set`.** `ssai` and `bts` keep theirs in
-the Symfony vault, so they show nothing in `dokku config`. Real environment variables take
-precedence over Symfony secrets, so setting the var in Dokku moves the app with no repo change.
+**A vaulted `DATABASE_URL` may or may not be overridden by `dokku config:set` — it depends on
+whether the app decrypts the vault to disk.** `ssai` and `bts` keep theirs in the Symfony vault and
+show nothing in `dokku config`; setting the var in Dokku moved them with no repo change, because
+the vault is read at runtime and loses to a real environment variable. But apps whose `app.json`
+predeploy runs `secrets:decrypt-to-local --force` materialise the vault into `.env.prod.local`
+first, and that file then *wins* — see §4a. Do not generalise from the `ssai`/`bts` result.
 Corollary: a per-container env check that skips containers lacking `DATABASE_URL` reports "0
-containers" for these apps and looks like success.
+containers" for vaulted apps and looks like success.
 
 **`sudo -u postgres pg_dump -f /root/...` fails silently-ish.** The `postgres` user cannot write to
 `/root`; all 33 pg17 dumps failed with `Permission denied`. Connecting over TCP as `postgres`
