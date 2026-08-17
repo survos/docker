@@ -182,13 +182,45 @@ in any org, and `ps:rebuild` fails on the PHP buildpack, so it runs on an unrepr
 Backup crons: the pg17 and pg18 jobs are removed (`/root/crontab.bak-20260817`). Only
 `0 3 * * * /root/.postgres-new.sh` remains → `pg.survos.com`.
 
+## 5b. pgBackRest — DONE, restore verified
+
+Set up 2026-08-17 on pg.survos.com. `archive_mode=on`,
+`archive_command='pgbackrest --stanza=survos archive-push %p'`, `archive_timeout=60s`, applied via
+`ALTER SYSTEM` + `docker restart survos_pg` (**13 s** of downtime; no Patroni on this host, so
+nothing fights `postgresql.auto.conf`).
+
+Config lives at `/home/postgres/pgdata/backup/pgbackrest.conf` because the image symlinks
+`/etc/pgbackrest.conf` there — i.e. it persists in the `root_pgdata` volume, not the image.
+Stanza `survos`; zstd-3; `repo1-retention-full=2`, `repo1-retention-diff=4`.
+
+First full backup: **6.5 GB / 17,306 files → 1004 MB in the repo** (~6.5×), 20 s.
+
+**The restore was actually exercised**, not assumed: restored to a scratch path, started on port
+5433 with `archive_mode=off` so the clone could not push into the production repo, then compared
+against the live cluster —
+
+| database | table | production | restored |
+|---|---|---|---|
+| lingua | target | 3,133,943 | 3,133,943 |
+| mediary | asset | 652,454 | 652,454 |
+| claims | claim | 36,954 | 36,954 |
+| kidpanalley | song | 2,324 | 2,324 |
+
+Clone removed afterwards. Schedule on pg-survos via `/root/pgbackrest-backup.sh`:
+weekly full (Sun 01:00), daily diff (Mon–Sat 01:00).
+
+> ⚠️ **repo1 is on the same disk as PGDATA.** It buys fast PITR, not disaster recovery — losing
+> pg-survos loses both. Off-host protection is still the nightly logical dump to dokku-ash
+> (`0 3 * * * /root/.postgres-new.sh`). **An S3 `repo2` in fsn1 is the proper fix** and is the
+> highest-value remaining durability work.
+
+Contrast with pg18, which reported 8,056 successful archives while `archive_command='cd .'` threw
+every segment away. Here `pgbackrest check` confirms a real segment landing in the repo, and
+`pg_stat_archiver` shows `failed=0`.
+
 ## 6. Open
 
-1. **pgBackRest — the real remaining gap.** `archive_mode=off`, `wal_level=replica`, single node,
-   no standby, no replication slots. 47 databases / 6.7 GB now depend on **one nightly logical
-   dump**, so worst-case loss is up to 24 hours. Enabling it needs a postgres **restart**
-   (`archive_mode` is not SIGHUP-able), which now touches every app rather than the two it would
-   have yesterday. pgBackRest ships inside the timescaledb-ha image.
+1. **pgBackRest `repo2` on S3 (fsn1).** repo1 shares a disk with the data — see §5b.
 2. **`claimsdb.survos.com` still points at the dead pg17 address.** Its three consumers
    (`mediary`, `musdig`, `zm`) were pointed straight at `pg.survos.com/claims`, since the rotation
    forced a URL rewrite anyway. Repoint the record to `178.156.255.32` or retire it — an alias
