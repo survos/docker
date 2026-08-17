@@ -145,20 +145,58 @@ which URL the app reads.
 
 ---
 
-## 5. Open
+## 5. DONE — both legacy clusters are retired
 
-1. **`claimsdb.survos.com` still points at pg17 and is now unused.** The three consumers
-   (`mediary`, `musdig`, `zm`) were pointed straight at `pg.survos.com/claims` because the rotation
-   forced a URL rewrite anyway. Either repoint the record to `178.156.255.32` and switch the apps
-   back to the alias, or retire it. Leaving it aimed at a dead host is the one landmine here.
-2. **pgBackRest.** `archive_mode=off`, `wal_level=replica` on the new cluster, so enabling it needs
-   a postgres **restart** (archive_mode is not SIGHUP-able). Three logical-dump crons still run and
-   remain the only protection until a *restore* is verified.
-3. **Decommission pg18** — nothing connects to it, and it is drained. **pg17 is BLOCKED by §4a.** Drop order: confirm a full backup
-   cycle on the new cluster first, since the dump crons still target the old hosts.
-4. **The dump crons still back up the old clusters** (`/root/.postgres.sh` → pg17,
-   `.postgres-pg18.sh` → pg18). Retarget or retire them as part of decommission, or backups will
-   silently cover nothing that matters.
-5. **`elastic-test` still billing** at €0.1931/hr.
-6. `mediary_ro`, `pgbouncer`, `replicator` roles existed on pg18 and were **not** recreated on the
+**§4a is resolved, and the diagnosis in it was wrong about the source.** The stale pg17 URL was
+never a committed `.env` — `git show HEAD:.env` is clean in every repo checked. Dokku's
+`builder-herokuish/pre-build` does this at **build** time:
+
+```
+config_export app "$APP" --format envfile --merged >> "$TMP_WORK_DIR/.env"
+```
+
+It appends the whole app config onto `.env` and bakes it into the image, so each image carries a
+frozen snapshot of `dokku config` from its last build. `config:set` updates the runtime variable;
+the stale baked line then outranks it. **The fix is `dokku ps:rebuild`** — no repo edits, no
+`git push`. All 16 apps re-baked and verified.
+
+`kpa` was the one exception: its `app.json` predeploy runs `secrets:decrypt-to-local --force`,
+writing `.env.prod.local`, which outranks even a freshly baked `.env`. That needed the vault entry
+dropped (`survos-sites/kpa`, commit *Drop DATABASE_URL from the prod vault*).
+
+**pg17** — stopped, disabled and `systemctl mask`ed on dokku-ash. Verified by stopping it and
+probing 30 apps: all healthy. The two that flagged were false positives — `stimulus-tutorial` (103,
+Early Hints) and `voxitour` (500) return identical codes with pg17 *running*.
+
+**pg18** — server `110012725` and volume `103620223` deleted 2026-08-17 after verifying no
+connections, no config references, all 11 databases present on the new cluster, and a
+`gzip -t`-clean 719 MB dump with all 11 `CREATE DATABASE` statements. Volume held only
+`/pgdata/18/main` + `lost+found`; `archive_command` was still the `cd .` placeholder, so there was
+no WAL archive to lose. **Saving: €62.49/mo + ~€5/mo.**
+
+Retired alongside: `voxitour` and `stimulus-tutorial` (web=0, databases dropped, README notices
+added). ⚠️ `voxitour` shared its database with **`vt`**, which is live — `vt` was given its own `vt`
+database first. `vt` itself is an orphan: composer name `survos-sites/vt`, but no such repo exists
+in any org, and `ps:rebuild` fails on the PHP buildpack, so it runs on an unreproducible image.
+
+Backup crons: the pg17 and pg18 jobs are removed (`/root/crontab.bak-20260817`). Only
+`0 3 * * * /root/.postgres-new.sh` remains → `pg.survos.com`.
+
+## 6. Open
+
+1. **pgBackRest — the real remaining gap.** `archive_mode=off`, `wal_level=replica`, single node,
+   no standby, no replication slots. 47 databases / 6.7 GB now depend on **one nightly logical
+   dump**, so worst-case loss is up to 24 hours. Enabling it needs a postgres **restart**
+   (`archive_mode` is not SIGHUP-able), which now touches every app rather than the two it would
+   have yesterday. pgBackRest ships inside the timescaledb-ha image.
+2. **`claimsdb.survos.com` still points at the dead pg17 address.** Its three consumers
+   (`mediary`, `musdig`, `zm`) were pointed straight at `pg.survos.com/claims`, since the rotation
+   forced a URL rewrite anyway. Repoint the record to `178.156.255.32` or retire it — an alias
+   aimed at a decommissioned host is the one landmine left.
+3. **`/mnt/volume-1/postgresql` — 32 GB of dead pg17 data**, reclaimable. `docker-data` is 264 GB
+   and likely holds prunable images. The volume is 1.2 T of 2 T used; `platform-data/vault` (687 G,
+   md's media) is live data, not cruft — the pre-S3 `images` dir is only 699 M.
+4. **`elastic-test` still billing** at €0.1931/hr.
+5. `mediary_ro`, `pgbouncer`, `replicator` roles existed on pg18 and were **not** recreated on the
    new cluster — nothing in Dokku config referenced them (every app connects as `postgres`).
+6. `kidpanalley_v2` (empty) still exists; a local `.env.local` points at it.
