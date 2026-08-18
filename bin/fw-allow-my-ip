@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+# Point a Hetzner Cloud firewall's "from Tac" rules at wherever this machine is now.
+#
+# The problem it solves: fsn1-survos-fw and pg-survos-fw both restrict ssh (22)
+# and Postgres (5432) to a single /32. A home/mobile IP changes, and then you are
+# locked out of the box you need in order to fix being locked out. The historical
+# workaround was pointing a local DATABASE_URL at production and bootstrapping
+# from there, which is worse in every way.
+#
+# This rewrites only the rules whose description contains "Tac", leaving public
+# rules (80/443/icmp) untouched.
+#
+# Usage:
+#   fw-allow-my-ip                 # updates every firewall with a "Tac" rule
+#   fw-allow-my-ip fsn1-survos-fw  # just one
+#
+# Needs HETZNER_CLOUD_TOKEN (or CLOUDFLARE-style export in ~/.bashrc).
+set -euo pipefail
+
+TOKEN="${HETZNER_CLOUD_TOKEN:-}"
+[ -z "$TOKEN" ] && { echo "HETZNER_CLOUD_TOKEN not set" >&2; exit 1; }
+API=https://api.hetzner.cloud/v1
+ONLY="${1:-}"
+
+# ipify over HTTPS. Deliberately not `dig +short myip.opendns.com`: that is
+# plaintext DNS and returns the resolver's view, which differs behind some NATs.
+MYIP="$(curl -fsS --max-time 15 https://api.ipify.org)"
+[[ "$MYIP" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "could not determine public IP (got '$MYIP')" >&2; exit 1; }
+echo "current public IP: $MYIP"
+
+curl -fsS -H "Authorization: Bearer $TOKEN" "$API/firewalls" \
+| MYIP="$MYIP" ONLY="$ONLY" python3 -c '
+import json,os,sys,urllib.request
+
+myip, only = os.environ["MYIP"] + "/32", os.environ.get("ONLY") or None
+token, api = os.environ["HETZNER_CLOUD_TOKEN"], "https://api.hetzner.cloud/v1"
+
+for fw in json.load(sys.stdin)["firewalls"]:
+    if only and fw["name"] != only:
+        continue
+    rules, changed = fw["rules"], []
+    for r in rules:
+        # Only rules explicitly scoped to a person get moved. A rule open to the
+        # world has no "Tac" in its description and must stay open.
+        if "tac" not in (r.get("description") or "").lower():
+            continue
+        others = [ip for ip in r["source_ips"] if not ip.endswith("/32")]
+        if r["source_ips"] == others + [myip]:
+            continue
+        r["source_ips"] = others + [myip]
+        changed.append(f"{r.get(\"description\")} (port {r.get(\"port\")})")
+    if not changed:
+        print(f"{fw[\"name\"]}: already current")
+        continue
+    body = json.dumps({"rules": rules}).encode()
+    req = urllib.request.Request(f"{api}/firewalls/{fw[\"id\"]}/actions/set_rules",
+                                 data=body, method="POST",
+                                 headers={"Authorization": f"Bearer {token}",
+                                          "Content-Type": "application/json"})
+    urllib.request.urlopen(req, timeout=30).read()
+    print(f"{fw[\"name\"]}: updated -> {myip}")
+    for c in changed:
+        print(f"    {c}")
+'
