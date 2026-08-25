@@ -118,10 +118,46 @@ exercise the parts that matter for real datasets, not just to have rows:
 - an `Attachments` column with the actual sprite PNGs
 
 Worth knowing: **Grist will not render an image from a URL in a cell.** The
-Markdown text widget passes `![alt](url)` through as literal text. Images mean
-an `Attachments` column with the bytes uploaded to `POST /api/docs/{id}/attachments`,
-which is a meaningful difference if your dataset points at images you already
-host elsewhere.
+Markdown text widget passes `![alt](url)` through as literal text. There are two
+ways around it, and which one you want depends on who owns the bytes:
+
+- **Attachments column** -- upload the bytes, Grist thumbnails them in the cell.
+  What the Pokedex doc does.
+- **Image viewer custom widget** -- a side panel that follows the cursor and
+  renders whatever URL is in a mapped text column. Nothing is copied, so this is
+  the one to use when the images already live somewhere else.
+
+### Demo data: PGSC
+
+The `PGSC` doc is the second option applied to a real case -- `~/sites/pgsc`
+(chijal.org) keeps its content in a Google Sheet whose photo column holds Google
+Drive *share* links, which are viewer pages, not images. Loaded from
+`pgsc/data/*.csv`:
+
+- `DriveUrl` stays exactly the link a human pasted -- it's also the identity
+  pgsc's MediaBundle hashes (`ensureMedia()` -> xxh3), so nothing downstream cares
+- `ImageUrl` is a **formula** column that regexes the file id out and rebuilds it
+  as `https://drive.google.com/thumbnail?id=<id>&sz=w1000`, i.e. nobody maintains
+  a second URL by hand
+- the Image viewer widget is mapped to `ImageUrl` and follows the grid cursor
+
+Wiring that widget from the API is undocumented and easy to get wrong. The
+mapping lives *inside* `customDef`, and the value is a **scalar** colRef, not a
+list, unless the widget declares `allowMultiple`:
+
+```json
+{"customView": "{\"url\": \"...viewer/index.html\", \"widgetId\": \"@gristlabs/widget-viewer\",
+                 \"access\": \"read table\", \"columnsMapping\": {\"ImageUrl\": 23}}"}
+```
+
+The mapping key (`ImageUrl`) is whatever the widget passes to `grist.ready({columns})`
+in its own source, not anything in the widget manifest.
+
+Coverage is partial on purpose -- it reflects the CSVs, not a cleanup: 12/20 obras
+have a photo link, and 15/20 resolve to an artist. The checked-in `artists.csv` is
+a raw intake-form export with no `code` column, so it can't be joined on the
+`artist_code` the live sheet's `@artists` tab uses; the demo bridges it on name
+initials, which is a stand-in, not the real key.
 
 Formulas run in the gVisor sandbox (`GRIST_SANDBOX_FLAVOR`), which the image
 supports out of the box. `pyodide` is the WASM fallback if gVisor ever fails.
