@@ -42,6 +42,7 @@ bin/start.sh
 | RabbitMQ (AMQP) | 5672 | `guest` / `guest` |
 | RabbitMQ (management UI) | 15672 | `guest` / `guest`, http://localhost:15672 |
 | Elasticsearch | 9200 | —, http://localhost:9200 |
+| Grist | 8484 | no auth, http://localhost:8484 |
 | Kibana | 5601 | —, http://localhost:5601 |
 
 ## Elasticsearch
@@ -63,6 +64,67 @@ Linux hosts need `vm.max_map_count` of at least `262144`:
 ```bash
 sysctl vm.max_map_count
 ```
+
+## Grist
+
+Grist is a spreadsheet/database hybrid, here to evaluate as a home for small
+shared datasets. http://localhost:8484
+
+```bash
+docker compose up -d grist
+```
+
+**It runs with authentication turned off**, so the port is bound to
+`127.0.0.1` and it must stay that way. Anyone who can reach 8484 is
+`tacman@gmail.com` (`GRIST_DEFAULT_EMAIL`) with owner rights on everything.
+Don't expose this container without configuring a real auth provider first --
+the admin panel at `/admin` has OIDC, SAML, and forwarded-headers options, the
+first two behind an activation key.
+
+Two env vars in `docker-compose.yaml` exist only to skip first-run clicking:
+
+- `GRIST_BOOT_KEY` -- gates `/boot` and `/admin`. Pinned so it isn't a random
+  value you have to dig out of the container logs.
+- `GRIST_IN_SERVICE=true` -- Grist 2.x returns
+  `{"error":"Grist is not yet configured"}` from *every* API route until the
+  setup wizard has been completed. Setting this marks the install in-service so
+  a fresh clone comes up with a working API.
+
+### API access
+
+The REST API wants a bearer token. Anonymous is a real (empty) identity, so log
+in first -- with no auth provider configured, `/login` just hands you the
+default account:
+
+```bash
+curl -s -c /tmp/grist.jar -L http://localhost:8484/login -o /dev/null
+curl -s -b /tmp/grist.jar -X POST -H 'Content-Type: application/json' \
+  http://localhost:8484/api/profile/apiKey
+```
+
+Then `curl -H "Authorization: Bearer <key>" http://localhost:8484/api/orgs`.
+Org is `survos` (`GRIST_SINGLE_ORG`).
+
+### Demo data
+
+The `Pokedex` doc holds all 151 Gen-1 Pokemon pulled from
+[PokeAPI](https://pokeapi.co), loaded through the REST API. It's there to
+exercise the parts that matter for real datasets, not just to have rows:
+
+- `Types` + `Pokemon` joined by real `Ref:` columns, not copied strings
+- Python formula columns (`Total` = stat sum, `Types` = `$Type1.Name + ...`)
+- reverse lookups on `Types` (`Pokemon.lookupRecords(Type1=$id)`) for per-type
+  counts and averages
+- an `Attachments` column with the actual sprite PNGs
+
+Worth knowing: **Grist will not render an image from a URL in a cell.** The
+Markdown text widget passes `![alt](url)` through as literal text. Images mean
+an `Attachments` column with the bytes uploaded to `POST /api/docs/{id}/attachments`,
+which is a meaningful difference if your dataset points at images you already
+host elsewhere.
+
+Formulas run in the gVisor sandbox (`GRIST_SANDBOX_FLAVOR`), which the image
+supports out of the box. `pyodide` is the WASM fallback if gVisor ever fails.
 
 ## Meilisearch
 

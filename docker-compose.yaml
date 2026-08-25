@@ -161,6 +161,53 @@ services:
             timeout: 5s
             retries: 10
 
+    # Grist -- spreadsheet/database hybrid, under evaluation as a home for small
+    # shared datasets (see README). Two images exist: gristlabs/grist-oss is the
+    # pure Apache-2.0 build, gristlabs/grist is the same core plus the optional
+    # enterprise toggle (unactivated = Community Edition). We run -oss so what's
+    # here is exactly what's redistributable.
+    #
+    # /persist holds everything: the .grist documents, the sessions DB, and the
+    # home metadata DB. It's a NAMED volume on purpose -- the $DOCKER_DATA_ROOT
+    # dirs are root-owned and Grist runs as uid 1000, so a bind mount there
+    # fails on first write.
+    grist:
+        image: gristlabs/grist-oss:latest
+        container_name: survos_grist
+        restart: unless-stopped
+        environment:
+            # Dev-only secrets, same posture as the Mercure JWT keys above.
+            GRIST_SESSION_SECRET: 'a1b2c3d4e5f60718293a4b5c6d7e8f90112233445566778899aabbccddeeff00'
+            # Gates first-run setup and the /admin panel. Pinned so a fresh
+            # clone doesn't have to go digging in the logs for a random key.
+            GRIST_BOOT_KEY: 'survos-dev-boot-key'
+            # No auth provider is configured, so Grist runs single-user: every
+            # request is this account, which is also the install admin.
+            GRIST_DEFAULT_EMAIL: tacman@gmail.com
+            GRIST_SINGLE_ORG: survos
+            APP_HOME_URL: http://localhost:8484
+            # Grist runs formulas in a sandbox; gvisor is the image default and
+            # needs privileges Docker doesn't grant here. pyodide is the
+            # WASM-based flavor that needs nothing from the host.
+            # The admin panel reports gVisor as "Ready" inside this image, and
+            # it's both the Grist default and the faster option, so use it.
+            GRIST_SANDBOX_FLAVOR: gvisor
+            # Grist 2.x gates the API behind a first-run setup wizard until the
+            # install is marked in-service. Setting it here means a fresh clone
+            # comes up ready instead of needing someone to click through /boot.
+            GRIST_IN_SERVICE: 'true'
+        ports:
+            - "127.0.0.1:8484:8484"
+        volumes:
+            - grist_data:/persist
+        healthcheck:
+            test: ["CMD-SHELL", "node -e \"require('http').get('http://localhost:8484/status',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))\""]
+            interval: 10s
+            timeout: 5s
+            retries: 12
+            start_period: 30s
+
 volumes:
     elasticsearch_data:
     postgres_data:
+    grist_data:
