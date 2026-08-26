@@ -77,9 +77,12 @@ docker compose up -d grist
 **It runs with authentication turned off**, so the port is bound to
 `127.0.0.1` and it must stay that way. Anyone who can reach 8484 is
 `tacman@gmail.com` (`GRIST_DEFAULT_EMAIL`) with owner rights on everything.
-Don't expose this container without configuring a real auth provider first --
-the admin panel at `/admin` has OIDC, SAML, and forwarded-headers options, the
-first two behind an activation key.
+Don't expose this container without configuring a real auth provider first.
+OIDC, SAML, and forwarded-headers auth are all in the `-oss` image and are
+configured with env vars (`GRIST_OIDC_IDP_ISSUER`, `GRIST_SAML_IDP_LOGIN`,
+`GRIST_FORWARD_AUTH_HEADER`). The admin panel badges OIDC and SAML as
+"requires activation key" -- that gates the point-and-click wizard, not the
+capability.
 
 Two env vars in `docker-compose.yaml` exist only to skip first-run clicking:
 
