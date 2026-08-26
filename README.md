@@ -162,6 +162,37 @@ initials, which is a stand-in, not the real key.
 Formulas run in the gVisor sandbox (`GRIST_SANDBOX_FLAVOR`), which the image
 supports out of the box. `pyodide` is the WASM fallback if gVisor ever fails.
 
+### "Applications"
+
+Grist markets what you build as "applications," but there is no separate app
+object -- no Baserow-style Application Builder. **A document is the app.** What
+that actually amounts to:
+
+- **pages + widget layouts** -- multiple widgets per page, cursor-linked, so
+  selecting a row drives the panels beside it
+- **forms** -- a native `form` widget you publish to a public URL, which anyone
+  can fill in with no account. Works in Community Edition.
+- **access rules** -- row/cell level, formula-driven; the free-tier feature
+  Baserow charges for
+- **custom widgets** -- HTML/JS in a sandboxed iframe against the plugin API,
+  plus a "Custom widget builder" widget for writing them inside Grist
+- **webhooks + REST API** for anything the document can't do itself
+
+The `YardSale` doc is a published form end-to-end: an anonymous `POST` to
+`/forms/<shareKey>/<sectionId>` lands a row in `Items`.
+
+Publishing one from the API needs three things, and the third is easy to miss:
+
+1. an `_grist_Shares` record with `options={"publish":true}` -- the server
+   generates the share `key` (readable in `/persist/home.sqlite3`, not returned
+   by the apply call)
+2. the page's `shareRef` pointed at it, and the section's
+   `shareOptions={"publish":true,"form":{}}`
+3. a **`layoutSpec` on the form section**. `CreateViewSection` leaves it empty,
+   and the Submit button is a node *in that spec* -- so the form renders its
+   fields and is simply unsubmittable until you build one:
+   `{"type":"Layout","children":[{"type":"Section","children":[{"type":"Field","leaf":<fieldRef>}]},{"type":"Submit"}]}`
+
 ## Meilisearch
 
 Meilisearch now lives in its own public repository so local development builds
