@@ -65,6 +65,33 @@ services:
             timeout: 3s
             retries: 10
 
+    # One MariaDB for every local WordPress site: survos, ff, kpa, pgsc (and Omeka S,
+    # which wants MySQL too). Per-site databases and users, not per-site servers.
+    #
+    # Deliberately here rather than inside any site's directory. `symfony server:start`
+    # detects the Docker Compose services of the project it runs from and injects their
+    # connection details as DB_HOST, DB_PORT, ... which, because Bedrock's dotenv
+    # repository is immutable, override the site's .env. With the database out of the
+    # site directories there is nothing to detect, so each .env is used verbatim.
+    #
+    # Create a database and its user with bin/create-db.sh <name>.
+    mariadb:
+        image: mariadb:11.4
+        container_name: survos_mariadb
+        restart: unless-stopped
+        environment:
+            MARIADB_ROOT_PASSWORD: "${MARIADB_ROOT_PASSWORD:-docker}"
+        command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
+        ports:
+            - "127.0.0.1:3307:3306"
+        volumes:
+            - mariadb_data:/var/lib/mysql
+        healthcheck:
+            test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+            interval: 5s
+            timeout: 5s
+            retries: 30
+
     postgres_messenger:
         image: postgres:18-alpine
         container_name: survos_messenger
@@ -211,3 +238,4 @@ volumes:
     elasticsearch_data:
     postgres_data:
     grist_data:
+    mariadb_data:
