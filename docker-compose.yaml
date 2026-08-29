@@ -183,6 +183,16 @@ services:
     # dirs are root-owned and Grist runs as uid 1000, so a bind mount there
     # fails on first write.
     grist:
+        # ON DEMAND -- not started by `docker compose up -d`. Grist runs remotely at
+        # https://grist.survos.com and that is what apps should point at. Start this
+        # one only to develop against a newer version or reproduce a bug:
+        #
+        #     docker compose up -d grist
+        #
+        # Naming a profiled service explicitly enables its profile, so no --profile
+        # flag is needed. See DEV-SERVICES.md for the full local -> deploy -> repoint
+        # workflow.
+        profiles: ["ondemand"]
         image: gristlabs/grist-oss:latest
         container_name: survos_grist
         restart: unless-stopped
