@@ -1,48 +1,4 @@
 services:
-    # Shared Elasticsearch development node used by SearchBundle-backed apps.
-    # Application-specific indexes and mappings remain owned by SearchBundle.
-    elasticsearch:
-        image: docker.elastic.co/elasticsearch/elasticsearch:9.5.0
-        container_name: survos_elasticsearch
-        restart: unless-stopped
-        environment:
-            discovery.type: single-node
-            xpack.security.enabled: "false"
-            ES_JAVA_OPTS: "-Xms1g -Xmx1g"
-            # No http.cors.* here on purpose. The Elasticvue *browser extension* and desktop app
-            # talk to this node without needing CORS; only the hosted/self-hosted web page does.
-            # This node is unauthenticated, so don't widen its origin policy for a UI nobody here
-            # is running that way.
-        ports:
-            - "127.0.0.1:9200:9200"
-        volumes:
-            - elasticsearch_data:/usr/share/elasticsearch/data
-        healthcheck:
-            test: ["CMD-SHELL", "curl --fail --silent http://localhost:9200/_cluster/health || exit 1"]
-            interval: 10s
-            timeout: 5s
-            retries: 20
-            start_period: 60s
-
-    # No elasticvue service here on purpose either. Elasticvue is the Elasticsearch counterpart to
-    # the riccox Meilisearch UI (index/alias management, document browser, REST console, MIT), but
-    # we use its browser extension, which needs neither a container nor CORS:
-    #   https://chromewebstore.google.com/detail/elasticvue/hkedbapjpblbodpgbajblpnlpenaebaa
-    # If someone ever wants the web build instead -- `docker run -p 8081:8080 cars10/elasticvue` --
-    # it needs the http.cors.* settings above turned back on and scoped to its origin.
-
-    kibana:
-        image: docker.elastic.co/kibana/kibana:9.5.0
-        container_name: survos_kibana
-        restart: unless-stopped
-        depends_on:
-            elasticsearch:
-                condition: service_healthy
-        environment:
-            ELASTICSEARCH_HOSTS: http://elasticsearch:9200
-        ports:
-            - "127.0.0.1:5601:5601"
-
     postgres:
         # Pinned deliberately -- `pg18-all` is a FLOATING tag. On 2026-08-16 the
         # local image had timescaledb 2.27.1 while that tag had moved to 2.29.1,
@@ -60,10 +16,19 @@ services:
         volumes:
             - postgres_data:/home/postgres/pgdata
         healthcheck:
+            # `interval` is the STEADY-STATE cadence, `start_interval` the one used
+            # only while the container is inside `start_period`. Splitting them is the
+            # whole trick: dependents gated on `service_healthy` still come up in a
+            # couple of seconds, but a stack left running all day stops paying for a
+            # probe every 5s forever. Every healthcheck here is a `docker exec`, which
+            # forks runc + containerd-shim on the host -- the cost is never just the
+            # command being run.
             test: ["CMD-SHELL", "pg_isready -U postgres"]
-            interval: 5s
+            interval: 30s
+            start_interval: 2s
+            start_period: 30s
             timeout: 3s
-            retries: 10
+            retries: 5
 
     # One MariaDB for every local WordPress site: survos, ff, kpa, pgsc (and Omeka S,
     # which wants MySQL too). Per-site databases and users, not per-site servers.
@@ -87,10 +52,15 @@ services:
         volumes:
             - mariadb_data:/var/lib/mysql
         healthcheck:
+            # retries: 30 at 5s was really a 150s boot allowance in disguise; that is
+            # what start_period is for, so the retry count can go back to meaning
+            # "how many consecutive failures before we call it sick".
             test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
-            interval: 5s
+            interval: 30s
+            start_interval: 2s
+            start_period: 90s
             timeout: 5s
-            retries: 30
+            retries: 5
 
     postgres_messenger:
         image: postgres:18-alpine
@@ -106,9 +76,11 @@ services:
             - ${DOCKER_DATA_ROOT:?Set DOCKER_DATA_ROOT}/messenger:/var/lib/postgresql
         healthcheck:
             test: ["CMD-SHELL", "pg_isready -U messenger"]
-            interval: 5s
+            interval: 30s
+            start_interval: 2s
+            start_period: 30s
             timeout: 3s
-            retries: 10
+            retries: 5
 
     # imgproxy:
     #     image: docker.imgproxy.pro/imgproxy:v4.0.11-ml
@@ -150,6 +122,8 @@ services:
             # actual health. Confirmed live: Mercure was serving real
             # subscribers/publishes the whole time this said "unhealthy".
             test: ["CMD", "curl", "-f", "http://localhost/healthz"]
+            interval: 30s
+            start_interval: 2s
             timeout: 5s
             retries: 5
             start_period: 60s
@@ -183,10 +157,20 @@ services:
             - ${DOCKER_DATA_ROOT:?Set DOCKER_DATA_ROOT}/rabbitmq:/var/lib/rabbitmq
             - ./rabbitmq/conf.d:/etc/rabbitmq/conf.d:ro
         healthcheck:
-            test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
-            interval: 10s
+            # `rabbitmq-diagnostics ping` boots a COMPLETE Erlang VM per probe to ask
+            # the broker whether it is alive -- measured at ~385% CPU sustained on this
+            # box, every 10s, forever. Opening a TCP connection to the AMQP port answers
+            # the same question (is the broker accepting connections) for free.
+            #
+            # `bash` is load-bearing: /bin/sh in this image is dash, which has no
+            # /dev/tcp, so the CMD-SHELL form of this silently fails-closed and the
+            # container never becomes healthy.
+            test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/localhost/5672"]
+            interval: 30s
+            start_interval: 2s
+            start_period: 60s
             timeout: 5s
-            retries: 10
+            retries: 5
 
     # Grist -- spreadsheet/database hybrid, under evaluation as a home for small
     # shared datasets (see README). Two images exist: gristlabs/grist-oss is the
@@ -228,14 +212,18 @@ services:
         volumes:
             - grist_data:/persist
         healthcheck:
-            test: ["CMD-SHELL", "node -e \"require('http').get('http://localhost:8484/status',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))\""]
-            interval: 10s
+            # Was `node -e "..."`, which booted a whole Node runtime every 10s to make
+            # one HTTP request. The image ships curl -- a small C binary that checks the
+            # same URL for the same 200 at a tiny fraction of the cost. Same semantics,
+            # not a downgrade to a bare port check.
+            test: ["CMD", "curl", "-fsS", "http://localhost:8484/status"]
+            interval: 30s
+            start_interval: 2s
+            start_period: 60s
             timeout: 5s
-            retries: 12
-            start_period: 30s
+            retries: 5
 
 volumes:
-    elasticsearch_data:
     postgres_data:
     grist_data:
     mariadb_data:
