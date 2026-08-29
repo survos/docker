@@ -102,6 +102,19 @@ servers) will not see it.
 |---|---|
 | `rappcal` | archived on GitHub (read-only). One local commit is stranded; the work looks like it belongs in `ccal`. |
 | `aqi-desktop` | remote is `breadthe/aqi-desktop` — third party, no write access. |
+| `pwa-bundle-demo-fw7` | commit sits on branch `praveen`, a collaborator's. Held deliberately — move it to main or confirm before pushing. |
+
+### Repos with NO remote at all — the local commit is the only copy
+
+These were invisible to a survey that filters on `origin`, and their work **cannot reach
+the Mac** until they have a remote. Both are committed as of 2026-08-29.
+
+| repo | uncommitted work found |
+|---|---|
+| `quefx` | `PLAN.md`, `SPECIFICATIONS.md`, bundle/doctrine config |
+| `sleekdb-demo` | `src/Service/SleekService.php`, `JSONL-DEMO.md`, doctrine config |
+
+Create remotes for these (or fold them into an existing repo) before wiping the Lemur.
 
 ## Deliberately left uncommitted
 
