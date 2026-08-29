@@ -41,29 +41,7 @@ bin/start.sh
 | Mailpit (SMTP) | 1025 / 8025 | — |
 | RabbitMQ (AMQP) | 5672 | `guest` / `guest` |
 | RabbitMQ (management UI) | 15672 | `guest` / `guest`, http://localhost:15672 |
-| Elasticsearch | 9200 | —, http://localhost:9200 |
 | Grist | 8484 | no auth, http://localhost:8484 |
-| Kibana | 5601 | —, http://localhost:5601 |
-
-## Elasticsearch
-
-Elasticsearch and Kibana are shared development services. Start only this pair
-with:
-
-```bash
-docker compose up -d elasticsearch kibana
-curl http://localhost:9200
-```
-
-Elasticsearch runs as a single node with security disabled and ports bound to
-localhost. This is a development configuration, not a production deployment.
-Its index data is persisted in the `elasticsearch_data` Docker volume.
-
-Linux hosts need `vm.max_map_count` of at least `262144`:
-
-```bash
-sysctl vm.max_map_count
-```
 
 ## Grist
 
@@ -240,8 +218,8 @@ docker compose exec rabbitmq rabbitmqctl set_permissions -p <appname> guest ".*"
 
 ## Data persistence
 
-Postgres and Elasticsearch use named Docker volumes. Redis, Mercure, and
+Postgres uses a named Docker volume. Redis, Mercure, and
 RabbitMQ mount data below `$DOCKER_DATA_ROOT`. A normal `docker compose down`
-or host reboot preserves queues, vhosts, indexes, and rows. `docker compose
+or host reboot preserves queues, vhosts, and rows. `docker compose
 down -v` removes named volumes; manually clearing `$DOCKER_DATA_ROOT` removes
 the bind-mounted service data.
