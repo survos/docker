@@ -3,7 +3,24 @@
 Follow-on to `DEV-SERVICES.md`. Everything below is decided-but-not-done, or needs
 Tac's call. No urgency — the load problem itself is fixed.
 
-## Needs a decision: the depot bundle
+## Deferred: the depot bundle (Tac is coming back to this)
+
+`ai-tools` was stopped 2026-08-29 and needs nothing further -- ssai already surfaces it.
+`Depot::$aiToolsReachable` is populated from depot's heartbeat, and
+`photo_scanner_controller.js` turns that into a red `ai-tools down` badge *and* disables
+Start Scanning. It blocks rather than warns on purpose: crop/deskew has no automatic
+retry, and a batch scanned with ai-tools down had to be re-triggered image by image.
+
+Restart it on the depot machine with:
+
+    cd ~/sites/ai-tools && uv run python -m uvicorn main:app --host 127.0.0.1 --port 8884
+
+**Small gap:** that command does not appear anywhere in the UI. The tooltip says "start it
+before scanning" without saying how, so whoever hits it has to go find the incantation.
+Worth putting the literal command in the badge title -- but it runs on the depot box, not
+the hub showing the message, so the wording has to make that clear.
+
+## Needs a decision: the rest of the depot bundle
 
 These four run continuously and are only useful while actively developing depot. They
 were NOT touched, because `depot-scan-worker` drives physical hardware (the FF-680W)
@@ -11,7 +28,7 @@ and disabling it silently breaks scanning.
 
 | unit / process | what it is | cost |
 |---|---|---|
-| `ai-tools` uvicorn :8884 | started by hand: `uv run python -m uvicorn main:app --host 127.0.0.1 --port 8884` | ~1.5 GB RSS |
+| `ai-tools` uvicorn :8884 | **stopped 2026-08-29** -- ssai reports it down and blocks Start Scanning | was ~1.5 GB RSS |
 | `depot-scan-worker.service` | scan_jobs consumer, drives the FF-680W | idle-ish |
 | `depot-scheduler.service` | depot scheduler | idle-ish |
 | `cloudflared-depot-lemur-pro.service` | tunnel for lemur-pro.scanstationai.work | idle-ish |
