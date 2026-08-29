@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+# dstacks -- what compose stacks are up, what they cost, and how to stop them.
+#
+#   dstacks            list stacks with container count, CPU, memory, age
+#   dstacks -x         also print the exact `docker compose stop` line per stack
+#
+# Stops nothing on its own. The point is to decide, then run one line by hand.
+
+set -uo pipefail
+show_cmd=0; [ "${1:-}" = "-x" ] && show_cmd=1
+
+printf '\n\033[1mload\033[0m  %s\n\n' "$(cut -d' ' -f1-3 /proc/loadavg)"
+
+stats=$(docker stats --no-stream --format '{{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}' 2>/dev/null)
+
+docker ps --format '{{.Names}}\t{{.Label "com.docker.compose.project"}}\t{{.Label "com.docker.compose.project.working_dir"}}\t{{.Status}}' \
+| while IFS=$'\t' read -r name proj dir status; do
+    cpu=$(echo "$stats" | awk -F'\t' -v n="$name" '$1==n {print $2}')
+    echo -e "${proj:-<standalone>}\t${dir:--}\t${name}\t${cpu:-?}\t${status}"
+  done | sort > /tmp/.dstacks.$$
+
+awk -F'\t' '
+{
+  n[$1]++; dir[$1]=$2
+  gsub(/%/,"",$4); cpu[$1]+=$4
+  if ($5 ~ /unhealthy/) bad[$1]++
+}
+END {
+  printf "\033[1m%-22s %5s %9s %8s  %s\033[0m\n", "STACK", "CTRS", "CPU", "UNHEALTHY", "WORKING DIR"
+  for (k in n)
+    printf "%-22s %5d %8.1f%% %8s  %s\n", k, n[k], cpu[k], (bad[k] ? bad[k] : "-"), dir[k]
+}' /tmp/.dstacks.$$ | { read -r hdr; echo "$hdr"; sort -k3 -rn; }
+
+echo
+printf '\033[1mper container\033[0m\n'
+awk -F'\t' '{printf "  %-24s %8s  %-22s %s\n", $3, $4, $1, $5}' /tmp/.dstacks.$$ \
+  | sort -k2 -rn | head -25
+
+if [ "$show_cmd" = 1 ]; then
+  echo
+  printf '\033[1mto stop a stack\033[0m (stop, not down -- keeps volumes and data)\n'
+  awk -F'\t' '!seen[$1]++ && $2 != "-" {printf "  docker compose -f %s/compose.yaml stop\n", $2}' /tmp/.dstacks.$$
+  awk -F'\t' '$2 == "-" {printf "  docker stop %s\n", $3}' /tmp/.dstacks.$$
+fi
+
+rm -f /tmp/.dstacks.$$
+echo

@@ -122,4 +122,12 @@ rather than only refusing to start it.
     dstacks -x       # the same, plus the exact stop command for each stack
     whyload          # is load CPU, I/O, or a stalled mount
 
-Both live in `~/bin`. Neither stops anything on its own.
+Both live in `bin/` here. Neither stops anything on its own. Symlink them onto PATH
+on a new machine:
+
+    ln -sf ~/sites/docker/bin/dstacks ~/sites/docker/bin/whyload ~/bin/
+
+`whyload` is worth reading before reaching for `top`: it answers the one question that
+changes what you do next, which is whether load is CPU, I/O, or a stalled FUSE mount.
+High load with `iowait` above ~20 is a hung rclone/NFS/USB mount, and the process list
+will look deceptively idle -- a completely different fix from anything in this file.
