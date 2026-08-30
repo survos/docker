@@ -109,12 +109,22 @@ servers) will not see it.
 These were invisible to a survey that filters on `origin`, and their work **cannot reach
 the Mac** until they have a remote. Both are committed as of 2026-08-29.
 
-| repo | uncommitted work found |
-|---|---|
-| `quefx` | `PLAN.md`, `SPECIFICATIONS.md`, bundle/doctrine config |
-| `sleekdb-demo` | `src/Service/SleekService.php`, `JSONL-DEMO.md`, doctrine config |
+| repo | commits | last | what it is |
+|---|---|---|---|
+| `wp-survos` | 11 | 2026-08-27 | survos.com WordPress/Bedrock editorial layer, moved to PHP 8.5 |
+| `quefx` | 3 | 2026-08-29 | `PLAN.md`, `SPECIFICATIONS.md`, bundle/doctrine config |
+| `sleekdb-demo` | 3 | 2026-08-29 | `src/Service/SleekService.php`, `JSONL-DEMO.md` |
+| `grist` | 3 | 2026-08-26 | notes on the live grist.survos.com deployment |
+| `civic` | 1 | 2026-08-26 | CiviCRM Standalone local stack, pinned 6.17.2 |
 
 Create remotes for these (or fold them into an existing repo) before wiping the Lemur.
+`wp-survos` is the one to do first — 11 commits of real work with no copy anywhere else.
+
+    gh repo create survos-sites/<name> --private --source=. --remote=origin --push
+
+Note `civic` and `grist` overlap with existing work: `civic` is a CiviCRM Standalone
+stack distinct from `tacman/bedrock-civicrm`, and `grist` is notes about a deployment
+already documented in this repo. Folding may beat creating.
 
 ## Deliberately left uncommitted
 
