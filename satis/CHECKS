@@ -1,4 +1,0 @@
-WAIT=5
-TIMEOUT=10
-ATTEMPTS=5
-/healthz ok

@@ -248,6 +248,6 @@ the bind-mounted service data.
 ## Selective Composer registry pilot
 
 The authenticated registry runs at https://satis.survos.com on the existing fsn1
-host. See [satis/README.md](satis/README.md) for tagged publication, private-package
+host. See `~/sites/satis/README.md` for tagged publication, private-package
 migration, credentials, and isolated Composer verification. A local on-demand
 registry remains available for publisher development.
