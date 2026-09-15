@@ -25,6 +25,7 @@ APPS = {
     'global-giving': 'gg_compare_',
     'packages': 'packages_',
     'zm': 'zm_',
+    'mediary': 'mediary_',
 }
 
 def key(app, role):
