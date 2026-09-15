@@ -19,35 +19,56 @@ def request(method, path, body=None, authorization=auth):
     with urllib.request.urlopen(req, context=context, timeout=30) as response:
         return json.load(response)
 
-for role, privileges in [('search', ['read', 'view_index_metadata']),
-                         ('indexer', ['manage', 'read', 'write'])]:
-    path = root / ('secrets/global-giving-' + role + '.json')
-    if not path.exists():
-        result = request('POST', '_security/api_key', {
-            'name': 'global-giving-' + role,
-            'role_descriptors': {'global-giving': {'cluster': [], 'indices': [{
-                'names': ['gg_compare_*'], 'privileges': privileges}]}}
-        })
-        path.touch(mode=0o600)
-        path.write_text(json.dumps(result, indent=2) + '\n')
-    path.chmod(0o600)
+# Each app gets a search key and an indexer key, both confined to its own index prefix.
+# Secrets land in secrets/<app>-<role>.json. global-giving's probe is left for verify.py.
+APPS = {
+    'global-giving': 'gg_compare_',
+    'packages': 'packages_',
+}
 
-search = 'ApiKey ' + json.loads((root / 'secrets/global-giving-search.json').read_text())['encoded']
-indexer = 'ApiKey ' + json.loads((root / 'secrets/global-giving-indexer.json').read_text())['encoded']
-index = 'gg_compare_deployment_probe'
-try:
-    request('PUT', index, {'settings': {'number_of_shards': 1, 'number_of_replicas': 0}}, indexer)
-except urllib.error.HTTPError as e:
-    if e.code != 400: raise
-request('PUT', index + '/_doc/1?refresh=true', {'title': 'deployment persistence probe'}, indexer)
-result = request('POST', index + '/_search', {'query': {'match': {'title': 'persistence'}}}, search)
-assert result['hits']['total']['value'] == 1
-try:
-    request('PUT', index + '/_doc/2', {'title': 'must not write'}, search)
-    raise AssertionError('Search key unexpectedly allowed writes')
-except urllib.error.HTTPError as e:
-    assert e.code == 403
-print('Authenticated indexing/search passed; search-only key denies writes.')
+def key(app, role):
+    return 'ApiKey ' + json.loads((root / ('secrets/' + app + '-' + role + '.json')).read_text())['encoded']
+
+for app, prefix in APPS.items():
+    for role, privileges in [('search', ['read', 'view_index_metadata']),
+                             ('indexer', ['manage', 'read', 'write'])]:
+        path = root / ('secrets/' + app + '-' + role + '.json')
+        if not path.exists():
+            result = request('POST', '_security/api_key', {
+                'name': app + '-' + role,
+                'role_descriptors': {app: {'cluster': [], 'indices': [{
+                    'names': [prefix + '*'], 'privileges': privileges}]}}
+            })
+            path.touch(mode=0o600)
+            path.write_text(json.dumps(result, indent=2) + '\n')
+        path.chmod(0o600)
+
+    search, indexer = key(app, 'search'), key(app, 'indexer')
+    index = prefix + 'deployment_probe'
+    try:
+        request('PUT', index, {'settings': {'number_of_shards': 1, 'number_of_replicas': 0}}, indexer)
+    except urllib.error.HTTPError as e:
+        if e.code != 400: raise
+    request('PUT', index + '/_doc/1?refresh=true', {'title': 'deployment persistence probe'}, indexer)
+    result = request('POST', index + '/_search', {'query': {'match': {'title': 'persistence'}}}, search)
+    assert result['hits']['total']['value'] == 1
+    try:
+        request('PUT', index + '/_doc/2', {'title': 'must not write'}, search)
+        raise AssertionError(app + ' search key unexpectedly allowed writes')
+    except urllib.error.HTTPError as e:
+        assert e.code == 403
+    for other_app, other_prefix in APPS.items():
+        if other_app == app:
+            continue
+        try:
+            request('PUT', other_prefix + 'scope_probe', {}, indexer)
+            raise AssertionError(app + ' indexer key reached ' + other_prefix + '*')
+        except urllib.error.HTTPError as e:
+            assert e.code == 403
+    if app != 'global-giving':
+        request('DELETE', index, authorization=indexer)
+    print(app + ': authenticated indexing/search passed; search key denies writes; scoped to ' + prefix + '*.')
+
 health = request('GET', '_cluster/health')
 print('Cluster health:', health['status'])
-print('Probe remains for restart verification:', index)
+print('Probe remains for restart verification: gg_compare_deployment_probe')

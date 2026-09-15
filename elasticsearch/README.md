@@ -22,7 +22,7 @@ The host requires Docker Compose, Python 3 and OpenSSL. fsn1 already has `vm.max
 - From an explicitly attached app container: `https://elasticsearch:9200` on Docker network `survos-es-private`.
 - No public DNS, proxy route, or public port is configured. Port 9300 is not published.
 - TLS trust: `/opt/elasticsearch/certs/ca.crt`. Mount the CA into consuming app containers and configure their HTTP client to trust it. Never disable certificate validation.
-- Private key files: `secrets/global-giving-search.json` and `secrets/global-giving-indexer.json`. The `encoded` field is used as an `Authorization: ApiKey …` header. Only `gg_compare_*` indexes are allowed. Search credentials cannot write; indexing credentials can manage those indexes. No cluster administration privilege is granted.
+- Private key files: `secrets/<app>-search.json` and `secrets/<app>-indexer.json`, one pair per app in `provision.py`'s `APPS` (global-giving → `gg_compare_*`, packages → `packages_*`). The `encoded` field is used as an `Authorization: ApiKey …` header, or as `api_key=` in a search-bundle DSN. Each key reaches only its app's prefix. Search credentials cannot write; indexing credentials can manage those indexes. No cluster administration privilege is granted.
 - Bootstrap administrator password: `secrets/elastic-password`; used only for provisioning/health operations, not app configuration.
 
 The service uses a dedicated bridge network; its published port is bound only to loopback. Attach an app as an additional network while preserving its existing network for other dependencies. No existing app has been attached by this deployment. The GlobalGiving lab needs its production authentication and remote query-embedding service configured separately before publishing.
