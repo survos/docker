@@ -36,7 +36,13 @@ Grist ended up running for weeks. Anything that should not start that way now ca
 |---|---|---|
 | Grist | https://grist.survos.com | `docker compose up -d grist` (in `~/sites/docker`) |
 | Mattermost | https://chat.survos.com | `docker compose -f ~/sites/mattermost/docker-compose.yml up -d` |
-| Elasticsearch | — | removed entirely; it was too big to keep running |
+| Elasticsearch 9.5.3 | local only | `docker-compose up -d elasticsearch` (in `~/sites/docker`) |
+
+Elasticsearch was removed on the Lemur, then restored for on-demand testing on the
+48 GiB M4 Pro Mac on 2026-09-15. Its Podman VM has 8 GiB RAM; Elasticsearch is capped
+at 2 GiB with a 1 GiB JVM heap. It uses a persistent named volume and listens only
+on `127.0.0.1:9200`, without authentication. Stop with
+`docker-compose stop elasticsearch`; it does not restart automatically.
 
 Naming a profiled service explicitly on the command line enables its profile, so
 `docker compose up -d grist` is all you need — no `--profile` flag.

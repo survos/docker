@@ -1,4 +1,27 @@
 services:
+    # Local SearchBundle testing on the Mac (Podman VM: 8 GiB).
+    # Start explicitly; keep the unauthenticated endpoint on loopback only.
+    elasticsearch:
+        profiles: ["ondemand"]
+        image: docker.elastic.co/elasticsearch/elasticsearch:9.5.3
+        container_name: survos_elasticsearch
+        restart: "no"
+        mem_limit: 2g
+        environment:
+            discovery.type: single-node
+            xpack.security.enabled: "false"
+            ES_JAVA_OPTS: "-Xms1g -Xmx1g"
+        ports:
+            - "127.0.0.1:9200:9200"
+        volumes:
+            - elasticsearch_data:/usr/share/elasticsearch/data
+        healthcheck:
+            test: ["CMD-SHELL", "curl --fail --silent 'http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=5s' || exit 1"]
+            interval: 30s
+            start_period: 60s
+            timeout: 10s
+            retries: 5
+
     postgres:
         # Pinned deliberately -- `pg18-all` is a FLOATING tag. On 2026-08-16 the
         # local image had timescaledb 2.27.1 while that tag had moved to 2.29.1,
@@ -234,6 +257,7 @@ services:
             retries: 5
 
 volumes:
+    elasticsearch_data:
     postgres_data:
     grist_data:
     mariadb_data:

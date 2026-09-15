@@ -174,6 +174,23 @@ Publishing one from the API needs three things, and the third is easy to miss:
    fields and is simply unsubmittable until you build one:
    `{"type":"Layout","children":[{"type":"Section","children":[{"type":"Field","leaf":<fieldRef>}]},{"type":"Submit"}]}`
 
+## Elasticsearch (local testing)
+
+Elasticsearch is pinned to 9.5.3, runs on demand, and stores indexes in the
+`elasticsearch_data` named volume. On the Mac, use the installed standalone Compose:
+
+```bash
+cd ~/sites/docker
+docker-compose up -d elasticsearch
+curl http://127.0.0.1:9200
+docker-compose stop elasticsearch
+```
+
+For SearchBundle apps, configure `ELASTICSEARCH_DSN=elasticsearch://127.0.0.1:9200`
+and select the ES adapter in that app. The node has no authentication and is bound
+to loopback only. It has a 2 GiB container limit and a 1 GiB JVM heap; the Mac's
+Podman VM has 8 GiB RAM. Existing app backends are not switched by starting it.
+
 ## Meilisearch
 
 Meilisearch now lives in its own public repository so local development builds
