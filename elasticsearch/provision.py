@@ -24,6 +24,7 @@ def request(method, path, body=None, authorization=auth):
 APPS = {
     'global-giving': 'gg_compare_',
     'packages': 'packages_',
+    'zm': 'zm_',
 }
 
 def key(app, role):
