@@ -174,6 +174,18 @@ Publishing one from the API needs three things, and the third is easy to miss:
    fields and is simply unsubmittable until you build one:
    `{"type":"Layout","children":[{"type":"Section","children":[{"type":"Field","leaf":<fieldRef>}]},{"type":"Submit"}]}`
 
+## Kibana (local testing)
+
+Kibana 9.5.3 connects to the local Elasticsearch service and is available at
+http://localhost:5601. Start both with `docker-compose up -d kibana` and stop
+Kibana with `docker-compose stop kibana`. It runs on demand with a 1.5 GiB
+container limit and binds only to loopback, matching the local ES version.
+
+The remote ES test service is on fsn1 at `/opt/elasticsearch`; it has no public
+endpoint. Kibana has not been installed there. A remote Kibana should live
+alongside that service, use its CA and authenticated connection, and initially
+be accessed through an SSH tunnel rather than a public unauthenticated port.
+
 ## Elasticsearch (local testing)
 
 A separate authenticated TLS service now runs on fsn1 under `/opt/elasticsearch`.
