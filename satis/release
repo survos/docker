@@ -1,0 +1,16 @@
+#!/bin/sh
+# Publish a tagged, committed monorepo release without GitHub split/API calls.
+set -eu
+if [ "$#" -lt 1 ]; then
+    echo 'Usage: satis/release TAG [--package survos/name ...]' >&2
+    exit 2
+fi
+registry_tag=$1
+shift
+cd "$(dirname "$0")/.."
+if command -v docker-compose >/dev/null 2>&1; then
+    set -- docker-compose run --rm satis-publisher --tag "$registry_tag" --url "${SATIS_URL:-http://127.0.0.1:8743}" "$@"
+else
+    set -- docker compose run --rm satis-publisher --tag "$registry_tag" --url "${SATIS_URL:-http://127.0.0.1:8743}" "$@"
+fi
+exec "$@"

@@ -12,6 +12,7 @@ import subprocess
 import tempfile
 import uuid
 import zipfile
+from urllib.parse import urlsplit
 
 
 def git(repo, *args):
@@ -19,6 +20,13 @@ def git(repo, *args):
 
 
 def publish(args):
+    if args.tag:
+        if args.ref or args.version:
+            raise ValueError('Use --tag OR --ref/--version')
+        args.ref = 'refs/tags/' + args.tag
+        args.version = args.tag.removeprefix('v')
+    if not args.ref or not args.version:
+        raise ValueError('Supply --tag, or both --ref and --version')
     data = args.data.resolve()
     data.mkdir(parents=True, exist_ok=True)
     with (data / '.publish.lock').open('w') as lock:
@@ -30,8 +38,18 @@ def publish(args):
             raise ValueError('Every package must appear in packages.json')
         if not re.fullmatch(r'\d+\.\d+\.\d+(?:-(?:alpha|beta|RC)\d+)?', args.version):
             raise ValueError('Use a release version such as 0.0.1 or 0.0.1-alpha1')
-        if not args.url.startswith(('http://', 'https://')):
-            raise ValueError('Public base URL must be HTTP(S)')
+        url = urlsplit(args.url)
+        if url.scheme not in ('http', 'https') or not url.hostname or url.username or url.password or url.query or url.fragment:
+            raise ValueError('Base URL must be HTTP(S), without credentials, query or fragment')
+        if url.scheme == 'http' and url.hostname not in ('localhost', '127.0.0.1', '[::1]', '::1'):
+            raise ValueError('HTTP is only allowed for loopback testing; use HTTPS remotely')
+        # Report a partial migration before publishing a registry that silently falls
+        # back to GitHub for dependencies in our namespace.
+        for name in selected:
+            manifest = json.loads(git(args.repo, 'show', f'{commit}:{catalog[name]}/composer.json'))
+            missing = [dep for dep in manifest.get('require', {}) if dep.startswith('survos/') and dep not in catalog]
+            if missing:
+                raise ValueError(f'{name}: add required packages to the allowlist: {missing}')
         artifacts = data / 'artifacts'
         artifacts.mkdir(exist_ok=True)
         prepared = []
@@ -128,8 +146,9 @@ if __name__ == '__main__':
     parser.add_argument('--data', type=Path, default=Path('/data'))
     parser.add_argument('--allowlist', type=Path, default=Path(__file__).with_name('packages.json'))
     parser.add_argument('--satis', type=Path, default=Path('/satis/bin/satis'))
-    parser.add_argument('--ref', required=True, help='Existing commit or tag; never creates a tag')
-    parser.add_argument('--version', required=True)
+    parser.add_argument('--tag', help='Existing release tag; derives the version and pins its commit')
+    parser.add_argument('--ref', help='Existing commit or tag; never creates a tag')
+    parser.add_argument('--version')
     parser.add_argument('--url', required=True, help='URL reachable by package consumers')
     parser.add_argument('--package', action='append', help='Allowlisted package; repeatable')
     publish(parser.parse_args())

@@ -24,6 +24,9 @@ services:
 
     satis:
         profiles: ["ondemand"]
+        env_file:
+            - path: ./satis/var/server.env
+              required: false
         build:
             context: ./satis
             target: server

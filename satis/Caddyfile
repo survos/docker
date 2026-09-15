@@ -3,8 +3,15 @@
     admin off
 }
 :8080 {
-    root * /srv/current
-    @metadata path *.json
-    header @metadata Cache-Control "no-cache"
-    file_server
+    handle /healthz {
+        respond "ok" 200
+    }
+    handle {
+        basic_auth {
+            {$SATIS_USERNAME} {$SATIS_PASSWORD_HASH}
+        }
+        root * /srv/current
+        header Cache-Control "private, no-store"
+        file_server
+    }
 }

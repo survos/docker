@@ -247,5 +247,7 @@ the bind-mounted service data.
 
 ## Selective Composer registry pilot
 
-See [satis/README.md](satis/README.md) for publishing allowlisted monorepo packages
-to an on-demand local Satis registry, and the later Dokku deployment requirements.
+The authenticated registry runs at https://satis.survos.com on the existing fsn1
+host. See [satis/README.md](satis/README.md) for tagged publication, private-package
+migration, credentials, and isolated Composer verification. A local on-demand
+registry remains available for publisher development.
