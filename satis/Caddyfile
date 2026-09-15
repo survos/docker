@@ -1,0 +1,10 @@
+{
+    auto_https off
+    admin off
+}
+:8080 {
+    root * /srv/current
+    @metadata path *.json
+    header @metadata Cache-Control "no-cache"
+    file_server
+}

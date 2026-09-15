@@ -22,6 +22,25 @@ services:
             timeout: 10s
             retries: 5
 
+    satis:
+        profiles: ["ondemand"]
+        build:
+            context: ./satis
+            target: server
+        restart: "no"
+        ports:
+            - "127.0.0.1:8743:8080"
+        volumes:
+            - ./satis/var:/srv:ro
+    satis-publisher:
+        profiles: ["tools"]
+        build:
+            context: ./satis
+            target: publisher
+        volumes:
+            - ../mono:/mono:ro
+            - ./satis/var:/data
+
     postgres:
         # Pinned deliberately -- `pg18-all` is a FLOATING tag. On 2026-08-16 the
         # local image had timescaledb 2.27.1 while that tag had moved to 2.29.1,

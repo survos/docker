@@ -240,3 +240,8 @@ RabbitMQ mount data below `$DOCKER_DATA_ROOT`. A normal `docker compose down`
 or host reboot preserves queues, vhosts, and rows. `docker compose
 down -v` removes named volumes; manually clearing `$DOCKER_DATA_ROOT` removes
 the bind-mounted service data.
+
+## Selective Composer registry pilot
+
+See [satis/README.md](satis/README.md) for publishing allowlisted monorepo packages
+to an on-demand local Satis registry, and the later Dokku deployment requirements.

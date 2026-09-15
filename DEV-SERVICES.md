@@ -34,6 +34,7 @@ Grist ended up running for weeks. Anything that should not start that way now ca
 
 | service | runs remotely at | start locally with |
 |---|---|---|
+| Satis pilot | local only | `docker compose up -d satis` after publishing; see [setup](satis/README.md) |
 | Grist | https://grist.survos.com | `docker compose up -d grist` (in `~/sites/docker`) |
 | Mattermost | https://chat.survos.com | `docker compose -f ~/sites/mattermost/docker-compose.yml up -d` |
 | Elasticsearch 9.5.3 | local only | `docker-compose up -d elasticsearch` (in `~/sites/docker`) |

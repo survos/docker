@@ -1,0 +1,4 @@
+{
+  "survos/debug-utils": "lib/debug-utils",
+  "survos/kit-bundle": "bu/kit-bundle"
+}
