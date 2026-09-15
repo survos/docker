@@ -1,0 +1,4 @@
+# Bound only unlimited Docker JSON logs; no containers are stopped or removed.
+SHELL=/bin/sh
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+*/15 * * * * root /usr/local/sbin/container-log-cleanup --apply 2>&1 | /usr/bin/logger -t container-log-cleanup
