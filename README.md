@@ -176,6 +176,10 @@ Publishing one from the API needs three things, and the third is easy to miss:
 
 ## Elasticsearch (local testing)
 
+A separate authenticated TLS service now runs on fsn1 under `/opt/elasticsearch`.
+See [fsn1 deployment and operations](elasticsearch/README.md). The configuration
+below remains the on-demand, unauthenticated local development node.
+
 Elasticsearch is pinned to 9.5.3, runs on demand, and stores indexes in the
 `elasticsearch_data` named volume. On the Mac, use the installed standalone Compose:
 

@@ -37,7 +37,7 @@ Grist ended up running for weeks. Anything that should not start that way now ca
 | Satis pilot | local only | `docker compose up -d satis` after publishing; see [setup](satis/README.md) |
 | Grist | https://grist.survos.com | `docker compose up -d grist` (in `~/sites/docker`) |
 | Mattermost | https://chat.survos.com | `docker compose -f ~/sites/mattermost/docker-compose.yml up -d` |
-| Elasticsearch 9.5.3 | local only | `docker-compose up -d elasticsearch` (in `~/sites/docker`) |
+| Elasticsearch 9.5.3 | fsn1, private TLS test service ([operations](elasticsearch/README.md)) | `docker-compose up -d elasticsearch` (in `~/sites/docker`) |
 
 Elasticsearch was removed on the Lemur, then restored for on-demand testing on the
 48 GiB M4 Pro Mac on 2026-09-15. Its Podman VM has 8 GiB RAM; Elasticsearch is capped
