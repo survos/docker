@@ -12,6 +12,16 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
+# On the Mac the daemon lives in the podman VM, which doesn't start at boot.
+# "already running" exits non-zero, hence || true; a real failure still
+# surfaces at compose below.
+if [ "$(uname)" = Darwin ] && command -v podman >/dev/null; then
+    podman machine start 2>/dev/null || true
+    # .zshrc sets this, but non-interactive shells don't read it.
+    : "${DOCKER_HOST:=unix://$(podman machine inspect --format '{{.ConnectionInfo.PodmanSocket.Path}}')}"
+    export DOCKER_HOST
+fi
+
 docker compose up -d
 
 if [ -f /etc/apparmor.d/php-fpm ]; then
