@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  launchd runs the rustfs binary directly (no shell wrapper) so macOS privacy
+  controls attribute WD access to rustfs itself: grant ~/.local/bin/rustfs
+  Full Disk Access once. KeepAlive/PathState keeps it running only while the
+  WD is mounted, so it never writes to the internal disk.
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>org.survos.rustfs</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>__HOME__/.local/bin/rustfs</string>
+        <string>server</string>
+        <string>--address</string>
+        <string>127.0.0.1:9000</string>
+        <string>--console-enable</string>
+        <string>--console-address</string>
+        <string>127.0.0.1:9001</string>
+        <string>--access-key-file</string>
+        <string>__HOME__/.config/rustfs/access_key</string>
+        <string>--secret-key-file</string>
+        <string>__HOME__/.config/rustfs/secret_key</string>
+        <string>__DATA__</string>
+    </array>
+    <key>KeepAlive</key>
+    <dict>
+        <key>PathState</key>
+        <dict>
+            <key>__DATA__</key>
+            <true/>
+        </dict>
+    </dict>
+    <key>ThrottleInterval</key>
+    <integer>30</integer>
+    <key>StandardOutPath</key>
+    <string>__HOME__/Library/Logs/rustfs.log</string>
+    <key>StandardErrorPath</key>
+    <string>__HOME__/Library/Logs/rustfs.log</string>
+</dict>
+</plist>
