@@ -38,13 +38,20 @@ AMQP connection error, `bin/start rabbitmq`.
 
 Grist is in neither set; use https://grist.survos.com, or `bin/start grist`.
 
-The lists are at the top of [bin/start](bin/start). Stop the stack with
-`docker compose --profile '*' stop` (stop, not down, which keeps the data).
+The lists are at the top of [bin/start](bin/start).
+
+```bash
+bin/stop                  # every service in this stack, ondemand ones included
+bin/stop kibana           # only the services you name
+```
+
+`bin/stop` stops, never downs: containers and volumes stay. It leaves containers
+from other projects alone and does not stop the podman VM.
 
 On the Mac, `docker compose` reaches podman only through `DOCKER_HOST`. `.zshrc`
 sets it for interactive shells; scripts and agents do not read `.zshrc`, and a
 `docker compose` run without it fails against `/var/run/docker.sock`. `bin/start`
-sets it itself. Elsewhere:
+and `bin/stop` set it themselves. Elsewhere:
 
 ```bash
 export DOCKER_HOST=unix://$(podman machine inspect --format '{{.ConnectionInfo.PodmanSocket.Path}}')

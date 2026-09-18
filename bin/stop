@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# Stop the shared dev services. The counterpart to bin/start.
+#
+#   bin/stop                  every service in this stack, ondemand ones included
+#   bin/stop kibana grist     just the named services
+#
+# Stop, not down: containers and volumes stay, so the next bin/start is instant
+# and no data is touched. Containers from other projects (yente, buildkit) are
+# left alone. The podman VM keeps running; `podman machine stop` if you want
+# the memory back.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+case "${1:-}" in
+    -h|--help) sed -n '2,10p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+esac
+
+# Same DOCKER_HOST fix as bin/start (non-interactive shells don't read .zshrc),
+# but never start the VM just to stop things in it.
+if [ "$(uname)" = Darwin ] && command -v podman >/dev/null; then
+    if ! podman machine inspect --format '{{.State}}' | grep -qx running; then
+        echo "podman machine is not running; nothing to stop"
+        exit 0
+    fi
+    : "${DOCKER_HOST:=unix://$(podman machine inspect --format '{{.ConnectionInfo.PodmanSocket.Path}}')}"
+    export DOCKER_HOST
+fi
+
+# --profile '*' so a bare stop also reaches elasticsearch, kibana and grist.
+docker compose --profile '*' stop "$@"
