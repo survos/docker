@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+# Bring up the shared dev services. Run once after every reboot.
+#
+#   bin/start                 everything: the whole shared stack, plus ES + Kibana
+#   bin/start core            the minimum for working on a public-facing site
+#   bin/start redis mailer    just the named services
+#
+# core is what a site needs to render pages: postgres (5434), elasticsearch
+# (9200) and redis (6379, the cache/session store in nearly every site's .env).
+# A designer never needs mariadb, rabbitmq, mercure, kibana...
+#
+# RabbitMQ is not in core on purpose: Symfony only connects to it when a message
+# is dispatched, so pages render fine without it. If a form submit fails with an
+# AMQP connection error, `bin/start rabbitmq`.
+#
+# Grist is in neither; use grist.survos.com, or `bin/start grist`.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+CORE=(postgres elasticsearch redis)
+
+case "${1:-}" in
+    "")    # every unprofiled service, plus the ondemand ones worth having locally
+           services=($(docker compose config --services) elasticsearch kibana) ;;
+    core)  services=("${CORE[@]}") ;;
+    -h|--help) sed -n '2,16p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    *)     services=("$@") ;;
+esac
+# On the Mac the daemon lives in the podman VM, which doesn't start at boot.
+# "already running" exits non-zero, hence || true; a real failure still
+# surfaces at compose below.
+if [ "$(uname)" = Darwin ] && command -v podman >/dev/null; then
+    podman machine start 2>/dev/null || true
+    # .zshrc sets this, but non-interactive shells don't read it.
+    : "${DOCKER_HOST:=unix://$(podman machine inspect --format '{{.ConnectionInfo.PodmanSocket.Path}}')}"
+    export DOCKER_HOST
+fi
+
+# Naming a profiled service (elasticsearch, kibana) enables its profile.
+docker compose up -d "${services[@]}"
+
+if [ -f /etc/apparmor.d/php-fpm ]; then
+    # Linux dev box only: the apparmor-profiles package resets php-fpm to
+    # enforcing on every reboot, which blocks it from reading app files
+    # ("Access denied." on every *.wip app). Needs sudo.
+    sudo apparmor_parser -C -r /etc/apparmor.d/php-fpm
+fi

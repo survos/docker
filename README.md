@@ -12,22 +12,46 @@ export IMGPROXY_LICENSE_KEY=<your-imgproxy-license-key>
 mkdir -p "$DOCKER_DATA_ROOT"
 
 git clone git@github.com:survos/docker && cd docker
-docker compose up -d
+bin/start
 ```
 
 Alternatively, put the secret values in a local `.env` file in this repo. Compose reads it automatically, and `.env` is ignored by git.
 
-### After a reboot
+### Starting services
 
-Every service here has `restart: unless-stopped`, so a running Docker daemon
-brings them all back on its own — but on machines with the (optional)
-`apparmor-profiles` package installed, php-fpm gets blocked by a reset
-AppArmor profile on every boot regardless of this stack. Run this once per
-boot to cover both:
+Run this once after every reboot (it also starts the podman VM on the Mac):
 
 ```bash
-bin/start.sh
+bin/start                 # everything: the whole shared stack, plus Elasticsearch + Kibana
+bin/start core            # just postgres, elasticsearch, redis
+bin/start rabbitmq        # only the services you name
 ```
+
+`bin/start core` is for someone working only on a public-facing site, a designer
+for example. It is what a site needs to render pages: postgres, elasticsearch and
+redis (the cache/session store in nearly every site's `.env`). It leaves out
+mariadb, rabbitmq, mercure, mailpit, the messenger postgres and Kibana.
+
+RabbitMQ is not in core even though most sites list it: Symfony only connects when
+a message is dispatched, so pages render without it. If a form submit fails with an
+AMQP connection error, `bin/start rabbitmq`.
+
+Grist is in neither set; use https://grist.survos.com, or `bin/start grist`.
+
+The lists are at the top of [bin/start](bin/start). Stop the stack with
+`docker compose --profile '*' stop` (stop, not down, which keeps the data).
+
+On the Mac, `docker compose` reaches podman only through `DOCKER_HOST`. `.zshrc`
+sets it for interactive shells; scripts and agents do not read `.zshrc`, and a
+`docker compose` run without it fails against `/var/run/docker.sock`. `bin/start`
+sets it itself. Elsewhere:
+
+```bash
+export DOCKER_HOST=unix://$(podman machine inspect --format '{{.ConnectionInfo.PodmanSocket.Path}}')
+```
+
+On Linux boxes with the optional `apparmor-profiles` package, `bin/start` also
+re-applies the php-fpm complain-mode override that the package resets on every boot.
 
 ## Services
 
@@ -177,7 +201,7 @@ Publishing one from the API needs three things, and the third is easy to miss:
 ## Kibana (local testing)
 
 Kibana 9.5.3 connects to the local Elasticsearch service and is available at
-http://localhost:5601. Start both with `docker-compose up -d kibana` and stop
+http://localhost:5601. Start both with `bin/start kibana` and stop
 Kibana with `docker-compose stop kibana`. It runs on demand with a 1.5 GiB
 container limit and binds only to loopback, matching the local ES version.
 
@@ -197,7 +221,7 @@ Elasticsearch is pinned to 9.5.3, runs on demand, and stores indexes in the
 
 ```bash
 cd ~/sites/docker
-docker-compose up -d elasticsearch
+bin/start elasticsearch
 curl http://127.0.0.1:9200
 docker-compose stop elasticsearch
 ```
@@ -207,14 +231,10 @@ and select the ES adapter in that app. The node has no authentication and is bou
 to loopback only. It has a 2 GiB container limit and a 1 GiB JVM heap; the Mac's
 Podman VM has 8 GiB RAM. Existing app backends are not switched by starting it.
 
-## Meilisearch
+## Meilisearch (retired)
 
-Meilisearch now lives in its own public repository so local development builds
-the exact Dockerfile deployed to production. Start it separately:
-
-```bash
-cd ~/sites/meilisearch && bin/run.sh
-```
+Not used any more: Elasticsearch replaced it (2026-09-15). The old standalone setup
+is in `~/sites/meilisearch`.
 
 ## Per-app databases
 

@@ -12,21 +12,16 @@ do not run it locally.** Point at production instead.
 
 ## What runs by default
 
-`dev-docker-stack.service` (a systemd *user* unit, `WantedBy=default.target`) starts
-exactly this list at login:
+`bin/start` (on the Mac, after starting the podman VM) brings up the whole shared
+stack plus Elasticsearch and Kibana. `bin/start core` brings up only the minimum for
+working on a public-facing site: postgres, elasticsearch, redis. `bin/start
+<service>...` starts just those. See the README for details.
 
-    postgres  postgres_messenger  meilisearch  redis  mailer  rabbitmq
+This replaces `dev-docker-stack.service`, the systemd user unit that started a fixed
+list at login on lemur (retired). The Mac has no systemd, so nothing starts at login.
 
-That list is deliberate and short. These are shared infrastructure that nearly every
-app needs, that has no remote equivalent you can point a dev app at, and that is cheap
-to leave running.
-
-    systemctl --user status  dev-docker-stack.service
-    systemctl --user stop    dev-docker-stack.service     # stop the lot
-    systemctl --user disable dev-docker-stack.service     # and stop it at next login
-
-**The trap this unit does not protect you from:** a bare `docker compose up -d` in
-`~/sites/docker` starts *every* service in the file, not the unit's list. That is how
+**The trap `bin/start` does not protect you from:** a bare `docker compose up -d` in
+`~/sites/docker` starts every service in the file without a profile, not the core set. That is how
 Grist ended up running for weeks. Anything that should not start that way now carries
 `profiles: ["ondemand"]`, which excludes it from a bare `up` — see below.
 
