@@ -39,6 +39,27 @@ services:
             elasticsearch:
                 condition: service_healthy
 
+    # Designer database: same connection settings, separate data from Timescale.
+    postgres-lite:
+        profiles: ["lightweight"]
+        image: postgres:18-alpine
+        container_name: survos_postgres_lite
+        restart: unless-stopped
+        environment:
+            POSTGRES_USER: postgres
+            POSTGRES_PASSWORD: docker
+        ports:
+            - "127.0.0.1:5434:5432"
+        volumes:
+            - postgres_lite_data:/var/lib/postgresql
+        healthcheck:
+            test: ["CMD-SHELL", "pg_isready -U postgres"]
+            interval: 30s
+            start_interval: 2s
+            start_period: 30s
+            timeout: 3s
+            retries: 5
+
     postgres:
         # Pinned deliberately -- `pg18-all` is a FLOATING tag. On 2026-08-16 the
         # local image had timescaledb 2.27.1 while that tag had moved to 2.29.1,
@@ -276,5 +297,6 @@ services:
 volumes:
     elasticsearch_data:
     postgres_data:
+    postgres_lite_data:
     grist_data:
     mariadb_data:

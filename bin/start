@@ -5,7 +5,7 @@
 #   bin/start core            the minimum for working on a public-facing site
 #   bin/start redis mailer    just the named services
 #
-# core is what a site needs to render pages: postgres (5434), elasticsearch
+# core uses lightweight postgres-lite (5434), elasticsearch
 # (9200) and redis (6379, the cache/session store in nearly every site's .env).
 # A designer never needs mariadb, rabbitmq, mercure, kibana...
 #
@@ -17,11 +17,11 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-CORE=(postgres elasticsearch redis)
+CORE=(postgres-lite elasticsearch redis)
 
 case "${1:-}" in
     "")    # every unprofiled service, plus the ondemand ones worth having locally
-           services=($(docker compose config --services) elasticsearch kibana) ;;
+           services=($(docker compose config --services | grep -vx postgres-lite) elasticsearch kibana) ;;
     core)  services=("${CORE[@]}") ;;
     -h|--help) sed -n '2,16p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *)     services=("$@") ;;
@@ -34,6 +34,31 @@ if [ "$(uname)" = Darwin ] && command -v podman >/dev/null; then
     # .zshrc sets this, but non-interactive shells don't read it.
     : "${DOCKER_HOST:=unix://$(podman machine inspect --format '{{.ConnectionInfo.PodmanSocket.Path}}')}"
     export DOCKER_HOST
+fi
+
+# Both database variants serve the same app connection URL. Never stop a running
+# database implicitly or mount its data in the other image.
+requested_postgres=""
+for service in "${services[@]}"; do
+    case "$service" in
+        postgres|postgres-lite)
+            if [ -n "$requested_postgres" ] && [ "$requested_postgres" != "$service" ]; then
+                echo "Choose postgres OR postgres-lite; both use port 5434." >&2
+                exit 1
+            fi
+            requested_postgres="$service"
+            ;;
+    esac
+done
+if [ -n "$requested_postgres" ]; then
+    other_postgres=postgres
+    [ "$requested_postgres" = postgres ] && other_postgres=postgres-lite
+    running_services=$(docker compose --profile '*' ps --status running --services)
+    if grep -qx "$other_postgres" <<< "$running_services"; then
+        echo "$other_postgres is already using port 5434. Run bin/stop $other_postgres before switching to $requested_postgres." >&2
+        echo "Their databases are separate; existing data stays in its original volume." >&2
+        exit 1
+    fi
 fi
 
 # Naming a profiled service (elasticsearch, kibana) enables its profile.

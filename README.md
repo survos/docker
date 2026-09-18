@@ -23,13 +23,34 @@ Run this once after every reboot (it also starts the podman VM on the Mac):
 
 ```bash
 bin/start                 # everything: the whole shared stack, plus Elasticsearch + Kibana
-bin/start core            # just postgres, elasticsearch, redis
+bin/start core            # lightweight postgres, elasticsearch, redis
 bin/start rabbitmq        # only the services you name
 ```
 
 `bin/start core` is for someone working only on a public-facing site, a designer
-for example. It is what a site needs to render pages: postgres, elasticsearch and
-redis (the cache/session store in nearly every site's `.env`). It leaves out
+for example. It starts `postgres-lite` (`postgres:18-alpine`), Elasticsearch and
+Redis. PostgreSQL still uses port **5434** and `postgres` / `docker`, so application
+connection URLs stay the same. This image omits Timescale and the extra search
+extensions; ordinary PostgreSQL features remain available.
+
+The lightweight database has its own `postgres_lite_data` volume. PostgreSQL 18
+mounts it at `/var/lib/postgresql`, following the [official image layout](https://hub.docker.com/_/postgres).
+Create the app database and run its migrations on first use (see the app README).
+Existing Timescale databases are not copied or converted.
+
+`bin/start postgres` and the full `bin/start` retain the existing Timescale image
+and `postgres_data` volume. Only one database variant can run on port 5434:
+
+```bash
+bin/stop postgres         # only if the full database is already running
+bin/start core
+# To switch back later:
+bin/stop postgres-lite
+bin/start postgres
+```
+
+For Ink navigation without search, `bin/start postgres-lite` alone is enough;
+add `bin/start elasticsearch` when working on archive search. Core leaves out
 mariadb, rabbitmq, mercure, mailpit, the messenger postgres and Kibana.
 
 RabbitMQ is not in core even though most sites list it: Symfony only connects when
@@ -64,7 +85,7 @@ re-applies the php-fpm complain-mode override that the package resets on every b
 
 | Service | Port | Credentials |
 |---------|------|-------------|
-| Postgres | 5434 | `postgres` / `docker` |
+| Postgres / Postgres lite (choose one) | 5434 | `postgres` / `docker` |
 | Postgres (messenger) | 5435 | `messenger` / `messenger` |
 | imgproxy | 8080 | license: `$IMGPROXY_LICENSE_KEY` (required, set in environment) |
 | Redis | 6379 | — |
