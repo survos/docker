@@ -13,7 +13,9 @@
 # Run detached, it takes most of a day (the WD reads ~50-100 MB/s):
 #   nohup caffeinate -is bin/wd-to-owc.sh copy > ~/Library/Logs/wd-to-owc/run.log 2>&1 &
 #
-# Plain folders copy one file at a time: 4 parallel reads made the WD seek-bound (~15 MB/s total).
+# Plain folders copy 1 file at a time: the WD reads ~55 MB/s for one stream and falls apart with more
+# (4 transfers: ~15 MB/s total; 2: ~28). Each file is read twice -- md5 first, then the upload from page
+# cache -- so the WD idles ~25% of the time (~43 MB/s net). Measured 2026-09-25.
 # Multi-thread uploads are off too: rclone otherwise reads 4 offsets of one big file at once (same seeking).
 # Never ask RustFS to list the bucket: big prefixes time out and abort the march (rustfs-wd memory).
 # Each object is a directory named by its key holding an xl.meta, so the key list comes from `find`
