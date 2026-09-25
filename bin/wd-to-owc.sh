@@ -14,6 +14,7 @@
 #   nohup caffeinate -is bin/wd-to-owc.sh copy > ~/Library/Logs/wd-to-owc/run.log 2>&1 &
 #
 # Plain folders copy one file at a time: 4 parallel reads made the WD seek-bound (~15 MB/s total).
+# Multi-thread uploads are off too: rclone otherwise reads 4 offsets of one big file at once (same seeking).
 # Never ask RustFS to list the bucket: big prefixes time out and abort the march (rustfs-wd memory).
 # Each object is a directory named by its key holding an xl.meta, so the key list comes from `find`
 # and every rclone call on the bucket uses --files-from --no-traverse.
@@ -46,6 +47,7 @@ case "${1:-copy}" in
     rclone mkdir "owc:$PLAIN"; rclone mkdir "owc:$BUCKET"
     echo "$(date '+%F %T') plain folders -> owc:$PLAIN"
     rclone copy "$WD" "owc:$PLAIN" "${EXCLUDES[@]}" --transfers 1 --checkers 16 --s3-chunk-size 64M \
+      --multi-thread-streams 0 --s3-upload-concurrency 2 \
       --stats 1m --stats-log-level NOTICE --log-level NOTICE --log-file "$STATE/plain.log"
     [ -s "$KEYS" ] || list_keys
     echo "$(date '+%F %T') wd:$BUCKET -> owc:$BUCKET"
