@@ -26,6 +26,9 @@ APPS = {
     'packages': 'packages_',
     'zm': 'zm_',
     'mediary': 'mediary_',
+    # Must match ink's SEARCH_INDEX_PREFIX exactly -- the key is scoped to this prefix, so a
+    # mismatch is a 403 on every request rather than an empty result. See ink/docs/elasticsearch.md.
+    'ink': 'ink_',
 }
 
 def key(app, role):
