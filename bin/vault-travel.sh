@@ -52,6 +52,11 @@ case "${1:-status}" in
     du -sh "$LOCAL"
     ;;
   push)
+    # Create the bucket first when it is missing. --s3-no-check-bucket (needed on Hetzner, which
+    # otherwise re-sends CreateBucket without the region and fails with LocationConstraintConflict)
+    # also stops rclone creating it, so a first push otherwise dies one 404 per file — 4,944 of
+    # them, with the real reason only in the last line.
+    rclone lsjson --stat "$REMOTE" >/dev/null 2>&1 || rclone mkdir "$REMOTE"
     rclone copy --progress --s3-no-check-bucket "$LOCAL" "$REMOTE"
     ;;
   pull)
