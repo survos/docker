@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>org.survos.seaweedfs</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>__HOME__/.local/bin/weed</string>
+    <string>server</string>
+    <string>-dir=__DATA__</string>
+    <string>-ip=127.0.0.1</string>
+    <string>-ip.bind=127.0.0.1</string>
+    <string>-master.port=9333</string>
+    <string>-volume.port=18080</string>
+    <string>-volume.max=0</string>
+    <string>-volume.index=leveldb</string>
+    <string>-filer</string>
+    <string>-filer.port=8888</string>
+    <string>-s3</string>
+    <string>-s3.port=8333</string>
+    <string>-s3.config=__HOME__/.config/seaweedfs/s3.json</string>
+    <string>-s3.port.iceberg=0</string>
+    <string>-s3.port.lance=0</string>
+    <string>-webdav</string>
+    <string>-webdav.port=7333</string>
+  </array>
+  <!-- only run while the OWC volume is mounted -->
+  <key>KeepAlive</key>
+  <dict><key>PathState</key><dict><key>__DATA__</key><true/></dict></dict>
+  <key>ThrottleInterval</key><integer>30</integer>
+  <!-- launchd agents cannot write to /Volumes (TCC), so log to ~/Library/Logs -->
+  <key>StandardOutPath</key><string>__HOME__/Library/Logs/seaweedfs.log</string>
+  <key>StandardErrorPath</key><string>__HOME__/Library/Logs/seaweedfs.log</string>
+</dict>
+</plist>
