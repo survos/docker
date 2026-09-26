@@ -16,6 +16,8 @@
 # Plain folders copy 1 file at a time: the WD reads ~55 MB/s for one stream and falls apart with more
 # (4 transfers: ~15 MB/s total; 2: ~28). Each file is read twice -- md5 first, then the upload from page
 # cache -- so the WD idles ~25% of the time (~43 MB/s net). Measured 2026-09-25.
+# --s3-disable-checksum drops that md5 pre-read for multipart files (>200 MB): one read each, but those
+# objects carry no md5 on the OWC, so verify-sum can only size-check them.
 # Multi-thread uploads are off too: rclone otherwise reads 4 offsets of one big file at once (same seeking).
 # Never ask RustFS to list the bucket: big prefixes time out and abort the march (rustfs-wd memory).
 # Each object is a directory named by its key holding an xl.meta, so the key list comes from `find`
@@ -49,7 +51,7 @@ case "${1:-copy}" in
     rclone mkdir "owc:$PLAIN"; rclone mkdir "owc:$BUCKET"
     echo "$(date '+%F %T') plain folders -> owc:$PLAIN"
     rclone copy "$WD" "owc:$PLAIN" "${EXCLUDES[@]}" --transfers 1 --checkers 16 --s3-chunk-size 64M \
-      --multi-thread-streams 0 --s3-upload-concurrency 2 \
+      --multi-thread-streams 0 --s3-upload-concurrency 2 --s3-disable-checksum \
       --stats 1m --stats-log-level NOTICE --log-level NOTICE --log-file "$STATE/plain.log"
     [ -s "$KEYS" ] || list_keys
     echo "$(date '+%F %T') wd:$BUCKET -> owc:$BUCKET"
