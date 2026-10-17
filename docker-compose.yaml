@@ -14,7 +14,8 @@ services:
         ports:
             - "127.0.0.1:9200:9200"
         volumes:
-            - elasticsearch_data:/usr/share/elasticsearch/data
+            # Internal Mac disk; deliberately outside the Podman VM and X10 vault.
+            - /Users/tac/elasticsearch-data:/usr/share/elasticsearch/data
         healthcheck:
             test: ["CMD-SHELL", "curl --fail --silent 'http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=5s' || exit 1"]
             interval: 30s
