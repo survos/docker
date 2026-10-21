@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Bring up the shared dev services. Run once after every reboot.
 #
-#   bin/start                 everything: the whole shared stack, plus ES + Kibana
+#   bin/start                 everything: the whole shared stack, plus ES (Kibana is opt-in: bin/start kibana)
 #   bin/start core            the minimum for working on a public-facing site
 #   bin/start redis mailer    just the named services
 #
@@ -21,7 +21,7 @@ CORE=(postgres-lite elasticsearch redis)
 
 case "${1:-}" in
     "")    # every unprofiled service, plus the ondemand ones worth having locally
-           services=($(docker compose config --services | grep -vx postgres-lite) elasticsearch kibana) ;;
+           services=($(docker compose config --services | grep -vx postgres-lite) elasticsearch) ;;
     core)  services=("${CORE[@]}") ;;
     -h|--help) sed -n '2,16p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *)     services=("$@") ;;

@@ -8,7 +8,6 @@ Shared infrastructure for Survos/Museado development. One clone, all services.
 # Set required env vars (add to ~/.bashrc)
 export DOCKER_DATA_ROOT=/mnt/data/docker-volumes   # Linux
 export DOCKER_DATA_ROOT="$HOME/docker-volumes"     # macOS
-export IMGPROXY_LICENSE_KEY=<your-imgproxy-license-key>
 mkdir -p "$DOCKER_DATA_ROOT"
 
 git clone git@github.com:survos/docker && cd docker
@@ -22,7 +21,7 @@ Alternatively, put the secret values in a local `.env` file in this repo. Compos
 Run this once after every reboot (it also starts the podman VM on the Mac):
 
 ```bash
-bin/start                 # everything: the whole shared stack, plus Elasticsearch + Kibana
+bin/start                 # everything: the whole shared stack, plus Elasticsearch (Kibana is opt-in: bin/start kibana)
 bin/start core            # lightweight postgres, elasticsearch, redis
 bin/start rabbitmq        # only the services you name
 ```
@@ -87,7 +86,6 @@ re-applies the php-fpm complain-mode override that the package resets on every b
 |---------|------|-------------|
 | Postgres / Postgres lite (choose one) | 5434 | `postgres` / `docker` |
 | Postgres (messenger) | 5435 | `messenger` / `messenger` |
-| imgproxy | 8080 | license: `$IMGPROXY_LICENSE_KEY` (required, set in environment) |
 | Redis | 6379 | — |
 | Mercure | 3000 | — |
 | Mailpit (SMTP) | 1025 / 8025 | — |

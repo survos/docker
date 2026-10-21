@@ -13,7 +13,7 @@ do not run it locally.** Point at production instead.
 ## What runs by default
 
 `bin/start` (on the Mac, after starting the podman VM) brings up the whole shared
-stack plus Elasticsearch and Kibana. `bin/start core` brings up only the minimum for
+stack plus Elasticsearch (Kibana is opt-in: `bin/start kibana`). `bin/start core` brings up only the minimum for
 working on a public-facing site: postgres, elasticsearch, redis. `bin/start
 <service>...` starts just those. See the README for details.
 

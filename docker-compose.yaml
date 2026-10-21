@@ -15,7 +15,7 @@ services:
             - "127.0.0.1:9200:9200"
         volumes:
             # Internal Mac disk; deliberately outside the Podman VM and X10 vault.
-            - /Users/tac/elasticsearch-data:/usr/share/elasticsearch/data
+            - ${HOME}/elasticsearch-data:/usr/share/elasticsearch/data
         healthcheck:
             test: ["CMD-SHELL", "curl --fail --silent 'http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=5s' || exit 1"]
             interval: 30s
@@ -143,15 +143,6 @@ services:
             start_period: 30s
             timeout: 3s
             retries: 5
-
-    # imgproxy:
-    #     image: docker.imgproxy.pro/imgproxy:v4.0.11-ml
-    #     container_name: imgproxy
-    #     environment:
-    ##         in dev, leave unset, 100 req/minute         
-    #         IMGPROXY_LICENSE_KEY: ${IMGPROXY_LICENSE_KEY:?Set IMGPROXY_LICENSE_KEY in your environment}
-    #     ports:
-    #         - "8080:8080"
 
     redis:
         image: redis:latest
